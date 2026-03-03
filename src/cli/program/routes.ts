@@ -99,16 +99,44 @@ const routeMemoryStatus: RouteSpec = {
   },
 };
 
+function isValueToken(arg: string | undefined): boolean {
+  if (!arg || arg === "--") {
+    return false;
+  }
+  if (!arg.startsWith("-")) {
+    return true;
+  }
+  return /^-\d+(?:\.\d+)?$/.test(arg);
+}
+
 function getCommandPositionals(argv: string[]): string[] {
   const out: string[] = [];
   const args = argv.slice(2);
-  for (const arg of args) {
+  let commandStarted = false;
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
     if (!arg || arg === "--") {
       break;
+    }
+    if (!commandStarted) {
+      if (arg.startsWith("--profile=") || arg.startsWith("--log-level=")) {
+        continue;
+      }
+      if (arg === "--dev" || arg === "--no-color") {
+        continue;
+      }
+      if (arg === "--profile" || arg === "--log-level") {
+        const next = args[i + 1];
+        if (isValueToken(next)) {
+          i += 1;
+        }
+        continue;
+      }
     }
     if (arg.startsWith("-")) {
       continue;
     }
+    commandStarted = true;
     out.push(arg);
   }
   return out;
