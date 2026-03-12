@@ -76,6 +76,7 @@ export type MatrixMonitorHandlerParams = {
   };
   getRoomInfo: (
     roomId: string,
+    opts?: { includeAliases?: boolean },
   ) => Promise<{ name?: string; canonicalAlias?: string; altAliases: string[] }>;
   getMemberDisplayName: (roomId: string, userId: string) => Promise<string>;
 };
@@ -256,15 +257,6 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
         selfUserId,
       });
       const isRoom = !isDirectMessage;
-      let roomInfoPromise: Promise<{
-        name?: string;
-        canonicalAlias?: string;
-        altAliases: string[];
-      }> | null = null;
-      const getResolvedRoomInfo = async () => {
-        roomInfoPromise ??= getRoomInfo(roomId);
-        return await roomInfoPromise;
-      };
 
       if (isRoom && groupPolicy === "disabled") {
         return;
@@ -272,7 +264,7 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
 
       const roomInfoForConfig =
         isRoom && roomsConfig && Object.keys(roomsConfig).some((key) => key.trim().startsWith("#"))
-          ? await getResolvedRoomInfo()
+          ? await getRoomInfo(roomId, { includeAliases: true })
           : undefined;
       const roomAliasesForConfig = roomInfoForConfig
         ? [roomInfoForConfig.canonicalAlias ?? "", ...roomInfoForConfig.altAliases].filter(Boolean)
@@ -560,7 +552,7 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
         return;
       }
       const senderName = await getSenderName();
-      const roomInfo = isRoom ? await getResolvedRoomInfo() : undefined;
+      const roomInfo = isRoom ? await getRoomInfo(roomId) : undefined;
       const roomName = roomInfo?.name;
 
       const messageId = event.event_id ?? "";

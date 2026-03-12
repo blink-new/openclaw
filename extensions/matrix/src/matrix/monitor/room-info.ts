@@ -20,17 +20,15 @@ function rememberBounded<T>(map: Map<string, T>, key: string, value: T, maxEntri
 }
 
 export function createMatrixRoomInfoResolver(client: MatrixClient) {
-  const roomInfoCache = new Map<string, MatrixRoomInfo>();
+  const roomNameCache = new Map<string, string | undefined>();
+  const roomAliasCache = new Map<string, Pick<MatrixRoomInfo, "canonicalAlias" | "altAliases">>();
   const memberDisplayNameCache = new Map<string, string>();
 
-  const getRoomInfo = async (roomId: string): Promise<MatrixRoomInfo> => {
-    const cached = roomInfoCache.get(roomId);
-    if (cached) {
-      return cached;
+  const getRoomName = async (roomId: string): Promise<string | undefined> => {
+    if (roomNameCache.has(roomId)) {
+      return roomNameCache.get(roomId);
     }
     let name: string | undefined;
-    let canonicalAlias: string | undefined;
-    let altAliases: string[] = [];
     try {
       const nameState = await client.getRoomStateEvent(roomId, "m.room.name", "").catch(() => null);
       if (nameState && typeof nameState.name === "string") {
@@ -39,6 +37,19 @@ export function createMatrixRoomInfoResolver(client: MatrixClient) {
     } catch {
       // ignore
     }
+    rememberBounded(roomNameCache, roomId, name, MAX_TRACKED_ROOM_INFO);
+    return name;
+  };
+
+  const getRoomAliases = async (
+    roomId: string,
+  ): Promise<Pick<MatrixRoomInfo, "canonicalAlias" | "altAliases">> => {
+    const cached = roomAliasCache.get(roomId);
+    if (cached) {
+      return cached;
+    }
+    let canonicalAlias: string | undefined;
+    let altAliases: string[] = [];
     try {
       const aliasState = await client
         .getRoomStateEvent(roomId, "m.room.canonical_alias", "")
@@ -53,9 +64,21 @@ export function createMatrixRoomInfoResolver(client: MatrixClient) {
     } catch {
       // ignore
     }
-    const info = { name, canonicalAlias, altAliases };
-    rememberBounded(roomInfoCache, roomId, info, MAX_TRACKED_ROOM_INFO);
+    const info = { canonicalAlias, altAliases };
+    rememberBounded(roomAliasCache, roomId, info, MAX_TRACKED_ROOM_INFO);
     return info;
+  };
+
+  const getRoomInfo = async (
+    roomId: string,
+    opts: { includeAliases?: boolean } = {},
+  ): Promise<MatrixRoomInfo> => {
+    const name = await getRoomName(roomId);
+    if (!opts.includeAliases) {
+      return { name, altAliases: [] };
+    }
+    const aliases = await getRoomAliases(roomId);
+    return { name, ...aliases };
   };
 
   const getMemberDisplayName = async (roomId: string, userId: string): Promise<string> => {

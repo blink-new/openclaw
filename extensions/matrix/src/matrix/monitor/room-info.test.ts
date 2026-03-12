@@ -31,12 +31,14 @@ function createClientStub() {
 }
 
 describe("createMatrixRoomInfoResolver", () => {
-  it("caches room info and member display names", async () => {
+  it("caches room names and member display names, and loads aliases only on demand", async () => {
     const client = createClientStub();
     const resolver = createMatrixRoomInfoResolver(client);
 
     await resolver.getRoomInfo("!room:example.org");
     await resolver.getRoomInfo("!room:example.org");
+    await resolver.getRoomInfo("!room:example.org", { includeAliases: true });
+    await resolver.getRoomInfo("!room:example.org", { includeAliases: true });
     await resolver.getMemberDisplayName("!room:example.org", "@alice:example.org");
     await resolver.getMemberDisplayName("!room:example.org", "@alice:example.org");
 
@@ -57,6 +59,6 @@ describe("createMatrixRoomInfoResolver", () => {
     }
     await resolver.getMemberDisplayName("!room:example.org", "@user-0:example.org");
 
-    expect(client.getRoomStateEvent).toHaveBeenCalledTimes(6150);
+    expect(client.getRoomStateEvent).toHaveBeenCalledTimes(5124);
   });
 });
