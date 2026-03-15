@@ -22,9 +22,13 @@ import {
   writeCache,
 } from "./web-shared.js";
 
-const SEARCH_PROVIDERS = ["brave", "gemini", "grok", "kimi", "perplexity"] as const;
+const SEARCH_PROVIDERS = ["blink", "brave", "gemini", "grok", "kimi", "perplexity"] as const;
 const DEFAULT_SEARCH_COUNT = 5;
 const MAX_SEARCH_COUNT = 10;
+
+// Blink Search — calls Blink AI Gateway /api/v1/search, billed through Blink credits.
+// Auto-detected when BLINK_API_KEY is set (always present in Blink Claw containers).
+const DEFAULT_BLINK_APIS_URL = "https://api.blink.new";
 
 const BRAVE_SEARCH_ENDPOINT = "https://api.search.brave.com/res/v1/web/search";
 const BRAVE_LLM_CONTEXT_ENDPOINT = "https://api.search.brave.com/res/v1/llm/context";
@@ -220,6 +224,11 @@ function createWebSearchSchema(params: {
       }),
     ),
   } as const;
+
+  if (params.provider === "blink") {
+    // Blink search: simple schema — query + count only
+    return Type.Object({ ...querySchema });
+  }
 
   if (params.provider === "brave") {
     return Type.Object({
@@ -530,6 +539,70 @@ type GeminiGroundingResponse = {
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
+// ─── Blink Search helpers ───────────────────────────────────────────────────
+
+type BlinkSearchResult = {
+  title: string;
+  url: string;
+  description: string;
+  published?: string;
+  siteName?: string;
+};
+
+function resolveBlinkApiKey(): string | undefined {
+  return normalizeSecretInput(process.env.BLINK_API_KEY) || undefined;
+}
+
+function resolveBlinkSearchUrl(): string {
+  const base = (process.env.BLINK_APIS_URL ?? DEFAULT_BLINK_APIS_URL).replace(/\/$/, "");
+  return `${base}/api/v1/search`;
+}
+
+async function runBlinkSearch(params: {
+  query: string;
+  count: number;
+  apiKey: string;
+  timeoutSeconds: number;
+}): Promise<BlinkSearchResult[]> {
+  const endpoint = resolveBlinkSearchUrl();
+
+  return withTrustedWebSearchEndpoint(
+    {
+      url: endpoint,
+      timeoutSeconds: params.timeoutSeconds,
+      init: {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${params.apiKey}`,
+        },
+        body: JSON.stringify({ query: params.query, count: params.count }),
+      },
+    },
+    async (res) => {
+      if (!res.ok) {
+        return await throwWebSearchApiError(res, "Blink Search");
+      }
+      const data = (await res.json()) as {
+        results?: Array<{ title?: string; url?: string; description?: string; published?: string }>;
+      };
+      const results = Array.isArray(data.results) ? data.results : [];
+      return results.map((entry) => {
+        const url = entry.url ?? "";
+        return {
+          title: entry.title ? wrapWebContent(entry.title, "web_search") : "",
+          url,
+          description: entry.description ? wrapWebContent(entry.description, "web_search") : "",
+          published: entry.published || undefined,
+          siteName: resolveSiteName(url) || undefined,
+        };
+      });
+    },
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 function resolveSearchConfig(cfg?: OpenClawConfig): WebSearchConfig {
   const search = cfg?.tools?.web?.search;
   if (!search || typeof search !== "object") {
@@ -562,6 +635,13 @@ function resolveSearchApiKey(search?: WebSearchConfig): string | undefined {
 }
 
 function missingSearchKeyPayload(provider: (typeof SEARCH_PROVIDERS)[number]) {
+  if (provider === "blink") {
+    return {
+      error: "missing_blink_api_key",
+      message:
+        "web_search (blink) needs a BLINK_API_KEY environment variable. This is automatically provided in Blink Claw deployments.",
+    };
+  }
   if (provider === "brave") {
     return {
       error: "missing_brave_api_key",
@@ -606,6 +686,9 @@ function resolveSearchProvider(search?: WebSearchConfig): (typeof SEARCH_PROVIDE
     search && "provider" in search && typeof search.provider === "string"
       ? search.provider.trim().toLowerCase()
       : "";
+  if (raw === "blink") {
+    return "blink";
+  }
   if (raw === "brave") {
     return "brave";
   }
@@ -622,8 +705,16 @@ function resolveSearchProvider(search?: WebSearchConfig): (typeof SEARCH_PROVIDE
     return "perplexity";
   }
 
-  // Auto-detect provider from available API keys (alphabetical order)
+  // Auto-detect provider from available API keys.
+  // Blink is checked FIRST — it's always present in Blink Claw containers.
   if (raw === "") {
+    // Blink (auto-detected when BLINK_API_KEY is set)
+    if (resolveBlinkApiKey()) {
+      logVerbose(
+        'web_search: no provider configured, auto-detected "blink" from BLINK_API_KEY',
+      );
+      return "blink";
+    }
     // Brave
     if (resolveSearchApiKey(search)) {
       logVerbose(
@@ -1627,6 +1718,25 @@ async function runWebSearch(params: {
 
   const start = Date.now();
 
+  if (params.provider === "blink") {
+    const results = await runBlinkSearch({
+      query: params.query,
+      count: params.count,
+      apiKey: params.apiKey,
+      timeoutSeconds: params.timeoutSeconds,
+    });
+    const payload = {
+      query: params.query,
+      provider: params.provider,
+      count: results.length,
+      tookMs: Date.now() - start,
+      externalContent: { untrusted: true, source: "web_search", provider: params.provider, wrapped: true },
+      results,
+    };
+    writeCache(SEARCH_CACHE, cacheKey, payload, params.cacheTtlMs);
+    return payload;
+  }
+
   if (params.provider === "perplexity") {
     if (params.perplexityTransport === "chat_completions") {
       const { content, citations } = await runPerplexitySearch({
@@ -1913,7 +2023,9 @@ export function createWebSearchTool(options?: {
   const braveMode = resolveBraveMode(braveConfig);
 
   const description =
-    provider === "perplexity"
+    provider === "blink"
+      ? "Search the web using Blink Search. Returns titles, URLs, and snippets. Fast and integrated with Blink's credit system."
+      : provider === "perplexity"
       ? perplexitySchemaTransportHint === "chat_completions"
         ? "Search the web using Perplexity Sonar via Perplexity/OpenRouter chat completions. Returns AI-synthesized answers with citations from web-grounded search."
         : "Search the web using Perplexity. Runtime routing decides between native Search API and Sonar chat-completions compatibility. Structured filters are available on the native Search API path."
@@ -1941,15 +2053,17 @@ export function createWebSearchTool(options?: {
       const perplexityRuntime =
         provider === "perplexity" ? resolvePerplexityTransport(perplexityConfig) : undefined;
       const apiKey =
-        provider === "perplexity"
-          ? perplexityRuntime?.apiKey
-          : provider === "grok"
-            ? resolveGrokApiKey(grokConfig)
-            : provider === "kimi"
-              ? resolveKimiApiKey(kimiConfig)
-              : provider === "gemini"
-                ? resolveGeminiApiKey(geminiConfig)
-                : resolveSearchApiKey(search);
+        provider === "blink"
+          ? resolveBlinkApiKey()
+          : provider === "perplexity"
+            ? perplexityRuntime?.apiKey
+            : provider === "grok"
+              ? resolveGrokApiKey(grokConfig)
+              : provider === "kimi"
+                ? resolveKimiApiKey(kimiConfig)
+                : provider === "gemini"
+                  ? resolveGeminiApiKey(geminiConfig)
+                  : resolveSearchApiKey(search);
 
       if (!apiKey) {
         return jsonResult(missingSearchKeyPayload(provider));

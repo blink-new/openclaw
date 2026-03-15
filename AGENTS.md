@@ -30,7 +30,7 @@ OpenClaw is an open-source AI agent framework (250K+ GitHub stars). It runs an a
 
 ## Our Changes (What We Added)
 
-Three new files + two modified:
+Three new files + **three modified** (including web-search.ts):
 
 ### New: `src/providers/blink-shared.ts`
 Blink provider constants — `BLINK_GATEWAY_BASE_URL` and `BLINK_MODEL_CATALOG` (model IDs in Vercel AI Gateway format: `anthropic/claude-sonnet-4.6`, `openai/gpt-5-1`, `google/gemini-3-flash`). Model `cost` set to 0 — Blink's gateway handles billing externally.
@@ -43,6 +43,17 @@ Export `buildBlinkProvider` from here.
 
 ### Modified: `src/agents/models-config.providers.ts`
 Auto-activate Blink provider when `BLINK_API_KEY` env var is set. Sets `anthropic/claude-sonnet-4.6` as the default model. No user config needed.
+
+### Modified: `src/agents/tools/web-search.ts`
+Adds `"blink"` as a first-class `web_search` provider. Auto-detected from `BLINK_API_KEY` — checked BEFORE Brave, so Blink Claw containers always get native web search.
+
+- `resolveBlinkApiKey()` — reads `BLINK_API_KEY`
+- `resolveBlinkSearchUrl()` — returns `${BLINK_APIS_URL}/api/v1/search`
+- `runBlinkSearch()` — calls `POST /api/v1/search`, returns `[{ title, url, description }]`
+- Schema: simple `{ query, count }` — no provider-specific filters needed
+- Description: `"Search the web using Blink Search. Fast and integrated with Blink's credit system."`
+
+**Result:** Every Blink Claw agent has a working `web_search` tool with zero user configuration. The LLM can call it natively (not via bash script). Costs billed through Blink credits via `/api/v1/search`.
 
 ---
 
@@ -68,7 +79,7 @@ Injected per-container at Fly.io machine creation by Blink's Claw Manager:
 ```
 OpenClaw agent receives message (Telegram/Discord/Slack via outbound polling)
   → calls LLM via blink provider
-  → POST https://api.blink.new/api/ai/gateway/v1/chat/completions
+  → POST https://api.blink.new/api/v1/chat/completions
      Authorization: Bearer {BLINK_API_KEY}
      Body: { model: "anthropic/claude-sonnet-4.6", messages: [...], stream: true }
   → blink-apis validates token → resolves workspace_id → calls gateway()
