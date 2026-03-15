@@ -33,7 +33,7 @@ OpenClaw is an open-source AI agent framework (250K+ GitHub stars). It runs an a
 Three new files + two modified:
 
 ### New: `src/providers/blink-shared.ts`
-Blink provider constants — `BLINK_GATEWAY_BASE_URL` and `BLINK_MODEL_CATALOG` (model IDs in Vercel AI Gateway format: `anthropic/claude-sonnet-4-5`, `openai/gpt-5-1`, `google/gemini-3-flash`). Model `cost` set to 0 — Blink's gateway handles billing externally.
+Blink provider constants — `BLINK_GATEWAY_BASE_URL` and `BLINK_MODEL_CATALOG` (model IDs in Vercel AI Gateway format: `anthropic/claude-sonnet-4.6`, `openai/gpt-5-1`, `google/gemini-3-flash`). Model `cost` set to 0 — Blink's gateway handles billing externally.
 
 ### New: `src/agents/blink-models.ts`
 `buildBlinkProvider()` — returns the `ProviderConfig` for the `blink` provider. Follows the exact same pattern as `buildKilocodeProvider()` (in `src/agents/models-config.providers.static.ts`). Uses `api: "openai-completions"` so OpenClaw calls `POST {baseUrl}/chat/completions` in standard OpenAI format.
@@ -42,7 +42,7 @@ Blink provider constants — `BLINK_GATEWAY_BASE_URL` and `BLINK_MODEL_CATALOG` 
 Export `buildBlinkProvider` from here.
 
 ### Modified: `src/agents/models-config.providers.ts`
-Auto-activate Blink provider when `BLINK_CLAW_TOKEN` env var is set. Sets `anthropic/claude-sonnet-4-5` as the default model. No user config needed.
+Auto-activate Blink provider when `BLINK_API_KEY` env var is set. Sets `anthropic/claude-sonnet-4.6` as the default model. No user config needed.
 
 ---
 
@@ -52,14 +52,14 @@ Injected per-container at Fly.io machine creation by Blink's Claw Manager:
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `BLINK_CLAW_TOKEN` | `blnk_ak_{workspaceSuffix}_{random}` | Auth token for Blink AI Gateway. Activates the Blink provider. |
+| `BLINK_API_KEY` | `blnk_ak_{workspaceSuffix}_{random}` | Workspace API key for Blink AI Gateway. Same concept as `OPENAI_API_KEY`. Activates the Blink provider. |
 | `BLINK_APIS_URL` | `https://api.blink.new` | Blink AI Gateway base URL |
 | `BLINK_AGENT_ID` | `clw_xxxxxxxx` | For per-agent usage tracking in Tinybird |
 | `OPENCLAW_STATE_DIR` | `/data` | All state goes here (Fly Volume mounted at `/data`) |
 | `OPENCLAW_GATEWAY_TOKEN` | random 32-char hex | Secures the gateway HTTP server |
 | `OPENCLAW_HEADLESS` | `true` | No interactive prompts |
 
-**`BLINK_CLAW_TOKEN` triggers everything.** When set, OpenClaw auto-registers the `blink` provider and sets it as the default. No `openclaw.json` config needed.
+**`BLINK_API_KEY` triggers everything.** When set, OpenClaw auto-registers the `blink` provider and sets `anthropic/claude-sonnet-4.6` as the default model. No `openclaw.json` config needed.
 
 ---
 
@@ -69,8 +69,8 @@ Injected per-container at Fly.io machine creation by Blink's Claw Manager:
 OpenClaw agent receives message (Telegram/Discord/Slack via outbound polling)
   → calls LLM via blink provider
   → POST https://api.blink.new/api/ai/gateway/v1/chat/completions
-     Authorization: Bearer {BLINK_CLAW_TOKEN}
-     Body: { model: "anthropic/claude-sonnet-4-5", messages: [...], stream: true }
+     Authorization: Bearer {BLINK_API_KEY}
+     Body: { model: "anthropic/claude-sonnet-4.6", messages: [...], stream: true }
   → blink-apis validates token → resolves workspace_id → calls gateway()
   → streams OpenAI SSE response back
   → blink-apis deducts credits from workspace (20% markup, same as all AI calls)
@@ -166,7 +166,7 @@ git submodule update --init
 | `Dockerfile` | Multi-stage build. Use `OPENCLAW_INSTALL_BROWSER=1` and `OPENCLAW_EXTENSIONS` args |
 | `src/providers/blink-shared.ts` | **Our addition** — Blink provider constants |
 | `src/agents/blink-models.ts` | **Our addition** — `buildBlinkProvider()` |
-| `src/agents/models-config.providers.ts` | **Modified** — auto-activates Blink when `BLINK_CLAW_TOKEN` set |
+| `src/agents/models-config.providers.ts` | **Modified** — auto-activates Blink when `BLINK_API_KEY` set |
 | `extensions/telegram/` | Telegram bot plugin (grammy, long-polling) |
 | `extensions/discord/` | Discord bot plugin (WebSocket gateway) |
 | `extensions/slack/` | Slack bot plugin |
@@ -187,7 +187,7 @@ pnpm install
 pnpm build:docker
 
 # Run locally (for testing Blink provider)
-BLINK_CLAW_TOKEN=blnk_ak_test_xxx \
+BLINK_API_KEY=blnk_ak_test_xxx \
 BLINK_APIS_URL=http://localhost:3001 \
 OPENCLAW_STATE_DIR=/tmp/openclaw-test \
 node openclaw.mjs gateway --allow-unconfigured --port 18789
