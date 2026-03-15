@@ -69,7 +69,7 @@ Injected per-container at Fly.io machine creation by Blink's Claw Manager:
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `BLINK_API_KEY` | `blnk_ak_{workspaceSuffix}_{random}` | Workspace API key for Blink AI Gateway. Same concept as `OPENAI_API_KEY`. Activates the Blink provider. |
+| `BLINK_API_KEY` | `blnk_ak_{random48}` | Workspace API key for Blink AI Gateway. Fully opaque — no IDs encoded in the key. Same concept as `OPENAI_API_KEY`. Activates the Blink provider. |
 | `BLINK_APIS_URL` | `https://api.blink.new` | Blink AI Gateway base URL |
 | `BLINK_AGENT_ID` | `clw_xxxxxxxx` | For per-agent usage tracking in Tinybird |
 | `OPENCLAW_STATE_DIR` | `/data` | All state goes here (Fly Volume mounted at `/data`) |
