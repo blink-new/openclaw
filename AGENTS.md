@@ -36,7 +36,13 @@ Three new files + **three modified** (including web-search.ts):
 Blink provider constants — `BLINK_GATEWAY_BASE_URL` and `BLINK_MODEL_CATALOG` (model IDs in Vercel AI Gateway format: `anthropic/claude-sonnet-4.6`, `openai/gpt-5-1`, `google/gemini-3-flash`). Model `cost` set to 0 — Blink's gateway handles billing externally.
 
 ### New: `src/agents/blink-models.ts`
-`buildBlinkProvider()` — returns the `ProviderConfig` for the `blink` provider. Follows the exact same pattern as `buildKilocodeProvider()` (in `src/agents/models-config.providers.static.ts`). Uses `api: "openai-completions"` so OpenClaw calls `POST {baseUrl}/chat/completions` in standard OpenAI format.
+`buildBlinkProvider()` — returns the `ProviderConfig` for the `blink` provider. Follows the exact same pattern as `buildKilocodeProvider()`. Uses `api: "openai-completions"`.
+
+**Critical:** includes `x-blink-agent-id` custom header so blink-apis knows which agent is making LLM calls (for per-agent Tinybird billing, connector lookups, usage display):
+```typescript
+headers: { 'x-blink-agent-id': { env: 'BLINK_AGENT_ID' } }
+```
+`BLINK_AGENT_ID` is injected as a separate env var alongside `BLINK_API_KEY` at machine creation. The key is workspace-scoped; the agent identity comes from the header.
 
 ### Modified: `src/agents/models-config.providers.static.ts`
 Export `buildBlinkProvider` from here.
@@ -71,6 +77,8 @@ Injected per-container at Fly.io machine creation by Blink's Claw Manager:
 | `OPENCLAW_HEADLESS` | `true` | No interactive prompts |
 
 **`BLINK_API_KEY` triggers everything.** When set, OpenClaw auto-registers the `blink` provider and sets `anthropic/claude-sonnet-4.6` as the default model. No `openclaw.json` config needed.
+
+**Key design:** `BLINK_API_KEY` is workspace-scoped (like OpenAI's `sk-...`). Agent identity is provided separately via `BLINK_AGENT_ID` env var, sent as `x-blink-agent-id` header on every API call. This means workspace-level API keys created by users (without an agent) work identically — they just don't set a `x-blink-agent-id` header.
 
 ---
 
