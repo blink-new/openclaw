@@ -5,12 +5,7 @@ name: Deploy Blink Claw
 # Also has a manual trigger for emergency re-deploys.
 on:
   push:
-    branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
-      - "**/*.mdx"
-      - ".agents/**"
+    branches: [blink-deploy]
   workflow_dispatch:
 
 # Never cancel an in-progress deploy — queue it instead.
