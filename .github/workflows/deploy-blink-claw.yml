@@ -21,6 +21,8 @@ jobs:
 
       - name: Set up Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
       # Build on Fly's remote infrastructure — no Docker setup needed.
       # Fly's remote builders are fast, dedicated machines with their own layer cache.
