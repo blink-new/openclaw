@@ -5,7 +5,7 @@ name: Deploy Blink Claw
 # Also has a manual trigger for emergency re-deploys.
 on:
   push:
-    branches: [blink-deploy]
+    branches: [main]
   workflow_dispatch:
 
 # Never cancel an in-progress deploy — queue it instead.
