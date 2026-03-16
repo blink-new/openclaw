@@ -120,7 +120,7 @@ destination = "/data"   # Fly Volume — all state persists here
 # No [http_service] block = no public URL (headless Phase 1)
 ```
 
-**Storage:** Fly Volume at `/data`. Agent CWD = `/data/agents/default/agent/`. npm installs, files, packages the agent creates all persist here across restarts.
+**Storage:** Fly Volume at `/data`. Agent CWD = `/data/agents/main/agent/`. npm installs, files, packages the agent creates all persist here across restarts.
 
 **Messaging:** Outbound polling only (no inbound ports needed). Telegram = `getUpdates` long-poll, Discord = WebSocket gateway. No webhook URL, no public IP.
 
