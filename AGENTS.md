@@ -141,19 +141,18 @@ GitHub Actions fires automatically on push to `blink-deploy`:
 1. Builds + pushes `registry.fly.io/blink-claw:latest` (~3-5 min with cache)
 2. Updates ALL running `blink-claw-*` Fly machines
 
-**NEVER push Blink work to `main`** — it triggers all upstream OpenClaw CI workflows
-(Docker Release, Install Smoke, CI tests, etc.) which are irrelevant for Blink.
+All upstream OpenClaw CI workflows (Docker Release, CI tests, smoke tests, etc.) have been
+deleted from our fork — we only keep `deploy-blink-claw.yml`. Push to `main` freely.
 
 ### Working on Blink-specific changes
 
 ```bash
 cd openclaw/
-git checkout blink-deploy   # always start from here
 
 # make changes, then deploy:
 git add .
 git commit -m "feat: ..."
-git push origin blink-deploy  # → GitHub Action auto-deploys
+git push origin main  # → GitHub Action auto-deploys
 ```
 
 ### Pulling upstream OpenClaw updates
