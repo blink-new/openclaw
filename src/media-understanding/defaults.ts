@@ -58,7 +58,7 @@ export const DEFAULT_IMAGE_MODELS: Record<string, string> = {
   minimax: "MiniMax-VL-01",
   "minimax-portal": "MiniMax-VL-01",
   zai: "glm-4.6v",
-  blink: "openai/gpt-5-mini",
+  blink: "anthropic/claude-sonnet-4.6",
 };
 export const CLI_OUTPUT_MAX_BUFFER = 5 * MB;
 export const DEFAULT_MEDIA_CONCURRENCY = 2;
