@@ -142,7 +142,15 @@ COPY --from=runtime-assets --chown=node:node /app/dist ./dist
 COPY --from=runtime-assets --chown=node:node /app/node_modules ./node_modules
 COPY --from=runtime-assets --chown=node:node /app/package.json .
 COPY --from=runtime-assets --chown=node:node /app/openclaw.mjs .
-COPY --from=runtime-assets --chown=node:node /app/extensions ./extensions
+# Only copy extensions used by Blink Claw + those cross-referenced by src/ at runtime.
+# All 43 extensions cause 10+ min boot on shared-cpu due to Jiti compilation.
+COPY --from=runtime-assets --chown=node:node /app/extensions/telegram ./extensions/telegram
+COPY --from=runtime-assets --chown=node:node /app/extensions/discord ./extensions/discord
+COPY --from=runtime-assets --chown=node:node /app/extensions/slack ./extensions/slack
+COPY --from=runtime-assets --chown=node:node /app/extensions/whatsapp ./extensions/whatsapp
+COPY --from=runtime-assets --chown=node:node /app/extensions/signal ./extensions/signal
+COPY --from=runtime-assets --chown=node:node /app/extensions/imessage ./extensions/imessage
+COPY --from=runtime-assets --chown=node:node /app/extensions/shared ./extensions/shared
 COPY --from=runtime-assets --chown=node:node /app/skills ./skills
 COPY --from=runtime-assets --chown=node:node /app/docs ./docs
 # Extensions (telegram, discord, slack, etc.) are loaded as TypeScript at runtime via Jiti.
