@@ -146,6 +146,7 @@ COPY --from=runtime-assets --chown=node:node /app/extensions/telegram ./extensio
 COPY --from=runtime-assets --chown=node:node /app/extensions/discord ./extensions/discord
 COPY --from=runtime-assets --chown=node:node /app/extensions/slack ./extensions/slack
 COPY --from=runtime-assets --chown=node:node /app/extensions/whatsapp ./extensions/whatsapp
+COPY --from=runtime-assets --chown=node:node /app/extensions/signal ./extensions/signal
 COPY --from=runtime-assets --chown=node:node /app/extensions/shared ./extensions/shared
 COPY --from=runtime-assets --chown=node:node /app/skills ./skills
 COPY --from=runtime-assets --chown=node:node /app/docs ./docs
