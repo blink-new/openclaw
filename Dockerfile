@@ -91,38 +91,7 @@ RUN pnpm canvas:a2ui:bundle || \
 RUN pnpm build:docker
 # Pre-compile extension TypeScript to JavaScript so Jiti loads plain JS at runtime.
 # Without this, Jiti compiles every .ts file on first import (~5-10 min on shared-cpu).
-RUN node -e " \
-const { execSync } = require('child_process'); \
-const fs = require('fs'); \
-const path = require('path'); \
-const extDir = path.join(__dirname, 'extensions'); \
-for (const ext of fs.readdirSync(extDir)) { \
-  const pkgPath = path.join(extDir, ext, 'package.json'); \
-  if (!fs.existsSync(pkgPath)) continue; \
-  const srcDir = path.join(extDir, ext, 'src'); \
-  if (!fs.existsSync(srcDir)) continue; \
-  const tsFiles = []; \
-  const walk = (dir) => { \
-    for (const f of fs.readdirSync(dir, { withFileTypes: true })) { \
-      if (f.isDirectory()) walk(path.join(dir, f.name)); \
-      else if (f.name.endsWith('.ts') && !f.name.endsWith('.d.ts')) tsFiles.push(path.join(dir, f.name)); \
-    } \
-  }; \
-  walk(srcDir); \
-  const indexTs = path.join(extDir, ext, 'index.ts'); \
-  if (fs.existsSync(indexTs)) tsFiles.push(indexTs); \
-  if (tsFiles.length === 0) continue; \
-  try { \
-    execSync('node -e \"require(\\\"esbuild\\\").buildSync({entryPoints:' + JSON.stringify(tsFiles) + ',outdir:\\\".\\\",outbase:\\\".\\\",format:\\\"esm\\\",platform:\\\"node\\\",allowOverwrite:true,logLevel:\\\"warning\\\"})\"', { cwd: __dirname, stdio: 'inherit' }); \
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8')); \
-    if (pkg.openclaw?.extensions) { \
-      pkg.openclaw.extensions = pkg.openclaw.extensions.map(e => e.replace(/\\.ts$/, '.js')); \
-      fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2)); \
-    } \
-    console.log('Pre-compiled: ' + ext + ' (' + tsFiles.length + ' files)'); \
-  } catch (e) { console.warn('Pre-compile skipped: ' + ext + ' — ' + e.message); } \
-} \
-"
+RUN node scripts/precompile-extensions.mjs
 # Force pnpm for UI build (Bun may fail on ARM/Synology architectures)
 ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm ui:build
