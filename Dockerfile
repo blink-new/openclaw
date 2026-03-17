@@ -173,6 +173,14 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
       DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $OPENCLAW_DOCKER_APT_PACKAGES; \
     fi
 
+# Install Blink Claw extended tools: bun (JS runtime), uv (Python pkg manager), clawhub (skills marketplace)
+# nano-pdf (AI PDF editor). Requires python3-pip in OPENCLAW_DOCKER_APT_PACKAGES.
+ARG OPENCLAW_INSTALL_BLINK_TOOLS=""
+RUN if [ -n "$OPENCLAW_INSTALL_BLINK_TOOLS" ]; then \
+      npm install -g bun clawhub && \
+      (pip3 install uv nano-pdf 2>/dev/null || pip install uv nano-pdf 2>/dev/null || true); \
+    fi
+
 # Optionally install Chromium and Xvfb for browser automation.
 # Build with: docker build --build-arg OPENCLAW_INSTALL_BROWSER=1 ...
 # Adds ~300MB but eliminates the 60-90s Playwright install on every container start.
