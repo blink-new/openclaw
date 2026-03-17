@@ -39,7 +39,7 @@ jobs:
             --push \
             --app blink-claw \
             --build-arg OPENCLAW_INSTALL_BROWSER=1 \
-            --build-arg "OPENCLAW_EXTENSIONS=telegram discord slack"
+            --build-arg "OPENCLAW_EXTENSIONS=telegram discord slack whatsapp"
 
       # Update every running blink-claw-* machine to the new image.
       # Skips the registry-only app (blink-claw) and the manager.
