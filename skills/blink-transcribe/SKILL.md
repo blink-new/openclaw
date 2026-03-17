@@ -14,20 +14,21 @@ metadata:
 Transcribe audio files using Blink AI (Whisper). No API key setup needed —
 charged to your Blink workspace credits.
 
-## Transcribe an audio file
+## Transcribe a local file (most common — agent has the file on disk)
 ```bash
-bash scripts/transcribe.sh "https://example.com/audio.mp3"
+bash scripts/transcribe.sh /data/recording.mp3
+bash scripts/transcribe.sh /tmp/voice_note.wav
+bash scripts/transcribe.sh /data/meeting.m4a en
 ```
 
-## Transcribe with language hint (faster, more accurate)
+## Transcribe a public URL
 ```bash
-bash scripts/transcribe.sh "https://example.com/audio.mp3" "en"
-```
-
-## Transcribe in another language
-```bash
+bash scripts/transcribe.sh "https://example.com/podcast.mp3"
 bash scripts/transcribe.sh "https://example.com/lecture.mp3" "fr"
 ```
+
+The script auto-detects: if input starts with `http`, treats it as URL.
+Otherwise reads it as a local file, base64-encodes it, and uploads automatically.
 
 ## Save transcript to file
 ```bash
