@@ -142,12 +142,12 @@ COPY --from=runtime-assets --chown=node:node /app/dist ./dist
 COPY --from=runtime-assets --chown=node:node /app/node_modules ./node_modules
 COPY --from=runtime-assets --chown=node:node /app/package.json .
 COPY --from=runtime-assets --chown=node:node /app/openclaw.mjs .
-# Only copy extensions used by Blink Claw + those cross-referenced by src/ at runtime.
-# All 43 extensions cause 10+ min boot on shared-cpu due to Jiti compilation.
+# Only copy extensions that work on Fly.io shared-cpu machines.
+# WhatsApp excluded: Baileys native deps hang Jiti compilation for 10+ min.
+# signal + imessage: not active channels but src/ has hardcoded imports to them.
 COPY --from=runtime-assets --chown=node:node /app/extensions/telegram ./extensions/telegram
 COPY --from=runtime-assets --chown=node:node /app/extensions/discord ./extensions/discord
 COPY --from=runtime-assets --chown=node:node /app/extensions/slack ./extensions/slack
-COPY --from=runtime-assets --chown=node:node /app/extensions/whatsapp ./extensions/whatsapp
 COPY --from=runtime-assets --chown=node:node /app/extensions/signal ./extensions/signal
 COPY --from=runtime-assets --chown=node:node /app/extensions/imessage ./extensions/imessage
 COPY --from=runtime-assets --chown=node:node /app/extensions/shared ./extensions/shared
