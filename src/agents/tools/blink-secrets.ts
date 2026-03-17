@@ -40,7 +40,7 @@ export function createBlinkSecretsTool(): AnyAgentTool | null {
       "(the value is encrypted and never returned after saving). " +
       "Use 'get_names' to list all stored key names. " +
       "Use 'delete' to remove a secret. " +
-      "After saving with 'set', the agent restarts (~30s) and the value becomes available as $KEY_NAME in shell commands.",
+      "After saving with 'set', the gateway restarts (~5-10s fast path via process kill, ~30s if fallback) and the value becomes available as $KEY_NAME in shell commands.",
     parameters: BlinkSecretsSchema,
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
@@ -70,7 +70,7 @@ export function createBlinkSecretsTool(): AnyAgentTool | null {
         return jsonResult({
           ok: true,
           key,
-          message: `Secret ${key} saved. Agent is restarting to apply (~30s). After restart, use $${key} in shell commands.`,
+          message: `Secret ${key} saved. Gateway restarting to apply (~5-10s). After restart, use $${key} in shell commands.`,
         });
       }
 
