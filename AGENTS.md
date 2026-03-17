@@ -134,26 +134,17 @@ destination = "/data"   # Fly Volume — all state persists here
 
 ```bash
 # Make your changes inside the openclaw/ submodule, then:
-git add . && git commit -m "feat: ..." && git push origin blink-deploy
+git add . && git commit -m "feat: ..." && git push origin main
 ```
 
-GitHub Actions fires automatically on push to `blink-deploy`:
+GitHub Actions fires automatically on push to **`main`** (NOT `blink-deploy`):
 1. Builds + pushes `registry.fly.io/blink-claw:latest` (~3-5 min with cache)
 2. Updates ALL running `blink-claw-*` Fly machines
 
+See `.github/workflows/deploy-blink-claw.yml` — `on: push: branches: [main]`.
+
 All upstream OpenClaw CI workflows (Docker Release, CI tests, smoke tests, etc.) have been
-deleted from our fork — we only keep `deploy-blink-claw.yml`. Push to `main` freely.
-
-### Working on Blink-specific changes
-
-```bash
-cd openclaw/
-
-# make changes, then deploy:
-git add .
-git commit -m "feat: ..."
-git push origin main  # → GitHub Action auto-deploys
-```
+deleted from our fork — we only keep `deploy-blink-claw.yml`.
 
 ### Pulling upstream OpenClaw updates
 
