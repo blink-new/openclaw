@@ -46,12 +46,17 @@ for (const ext of fs.readdirSync(extDir)) {
     }
   }
 
-  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-  if (pkg.openclaw && pkg.openclaw.extensions) {
-    pkg.openclaw.extensions = pkg.openclaw.extensions.map(function(e) { return e.replace(/\.ts$/, ".js"); });
-    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
-  }
-  console.log("Pre-compiled: " + ext + " (" + compiled + "/" + tsFiles.length + " files)");
+    for (const tsFile of tsFiles) {
+      const jsFile = tsFile.replace(/\.ts$/, ".js");
+      if (fs.existsSync(jsFile)) fs.unlinkSync(tsFile);
+    }
+
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+    if (pkg.openclaw && pkg.openclaw.extensions) {
+      pkg.openclaw.extensions = pkg.openclaw.extensions.map(function(e) { return e.replace(/\.ts$/, ".js"); });
+      fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+    }
+    console.log("Pre-compiled: " + ext + " (" + compiled + "/" + tsFiles.length + " files)");
   total += compiled;
 }
 console.log("Total: " + total + " files pre-compiled");
