@@ -56,6 +56,7 @@ export const BLINK_MODEL_CATALOG_STATIC: BlinkModelCatalogEntry[] = [
   { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", reasoning: false, input: ["text", "image"], contextWindow: 200000, maxTokens: 8192 },
   { id: "anthropic/claude-3.5-haiku", name: "Claude 3.5 Haiku", reasoning: false, input: ["text", "image"], contextWindow: 200000, maxTokens: 8192 },
   { id: "openai/gpt-5.2", name: "GPT-5.2", reasoning: false, input: ["text", "image"], contextWindow: 1047576, maxTokens: 32768 },
+  { id: "openai/gpt-5-mini", name: "GPT-5 Mini", reasoning: false, input: ["text", "image"], contextWindow: 128000, maxTokens: 16384 },
   { id: "openai/gpt-5.1-codex-mini", name: "GPT-5.1 Codex Mini", reasoning: false, input: ["text"], contextWindow: 1047576, maxTokens: 32768 },
   { id: "openai/gpt-4o", name: "GPT-4o", reasoning: false, input: ["text", "image"], contextWindow: 128000, maxTokens: 16384 },
   { id: "openai/gpt-4o-mini", name: "GPT-4o mini", reasoning: false, input: ["text", "image"], contextWindow: 128000, maxTokens: 16384 },
