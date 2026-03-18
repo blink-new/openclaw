@@ -14,41 +14,41 @@ Manage Teams messages and channels via Microsoft Graph API. Provider key: `micro
 
 ## List my teams
 ```bash
-bash scripts/call.sh microsoft_teams /me/joinedTeams GET
+bash scripts/call.sh /me/joinedTeams GET
 ```
 
 ## List channels in a team
 ```bash
-bash scripts/call.sh microsoft_teams /teams/{teamId}/channels GET
+bash scripts/call.sh /teams/{teamId}/channels GET
 ```
 
 ## Send channel message
 ```bash
-bash scripts/call.sh microsoft_teams /teams/{teamId}/channels/{channelId}/messages POST \
+bash scripts/call.sh /teams/{teamId}/channels/{channelId}/messages POST \
   '{"body":{"content":"Hello team!"}}'
 ```
 
 ## Get channel messages
 ```bash
-bash scripts/call.sh microsoft_teams /teams/{teamId}/channels/{channelId}/messages GET \
+bash scripts/call.sh /teams/{teamId}/channels/{channelId}/messages GET \
   '{"$top":"20"}'
 ```
 
 ## Send chat message
 ```bash
-bash scripts/call.sh microsoft_teams /chats/{chatId}/messages POST \
+bash scripts/call.sh /chats/{chatId}/messages POST \
   '{"body":{"content":"Hi!"}}'
 ```
 
 ## List my chats
 ```bash
-bash scripts/call.sh microsoft_teams /me/chats GET \
+bash scripts/call.sh /me/chats GET \
   '{"$expand":"members"}'
 ```
 
 ## Get team members
 ```bash
-bash scripts/call.sh microsoft_teams /teams/{teamId}/members GET
+bash scripts/call.sh /teams/{teamId}/members GET
 ```
 
 ## Common use cases

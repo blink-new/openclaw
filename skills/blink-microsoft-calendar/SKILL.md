@@ -14,13 +14,13 @@ Manage calendar events via Microsoft Graph API. Provider key: `microsoft_calenda
 
 ## List upcoming events
 ```bash
-bash scripts/call.sh microsoft_calendar /me/events GET \
+bash scripts/call.sh /me/events GET \
   '{"$top":"20","$select":"subject,start,end,location,attendees","$orderby":"start/dateTime"}'
 ```
 
 ## Create event
 ```bash
-bash scripts/call.sh microsoft_calendar /me/events POST '{
+bash scripts/call.sh /me/events POST '{
   "subject": "Team Sync",
   "start": {"dateTime": "2024-03-01T10:00:00", "timeZone": "UTC"},
   "end": {"dateTime": "2024-03-01T11:00:00", "timeZone": "UTC"},
@@ -30,12 +30,12 @@ bash scripts/call.sh microsoft_calendar /me/events POST '{
 
 ## Get all calendars
 ```bash
-bash scripts/call.sh microsoft_calendar /me/calendars GET
+bash scripts/call.sh /me/calendars GET
 ```
 
 ## Check availability
 ```bash
-bash scripts/call.sh microsoft_calendar /me/getSchedule POST '{
+bash scripts/call.sh /me/getSchedule POST '{
   "schedules": ["user@example.com"],
   "startTime": {"dateTime": "2024-03-01T00:00:00", "timeZone": "UTC"},
   "endTime": {"dateTime": "2024-03-01T23:59:59", "timeZone": "UTC"}
@@ -44,14 +44,14 @@ bash scripts/call.sh microsoft_calendar /me/getSchedule POST '{
 
 ## Update event
 ```bash
-bash scripts/call.sh microsoft_calendar /me/events/{id} PATCH '{
+bash scripts/call.sh /me/events/{id} PATCH '{
   "subject": "Updated Meeting Title"
 }'
 ```
 
 ## Delete event
 ```bash
-bash scripts/call.sh microsoft_calendar /me/events/{id} DELETE
+bash scripts/call.sh /me/events/{id} DELETE
 ```
 
 ## Common use cases

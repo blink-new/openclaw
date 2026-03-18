@@ -3,7 +3,10 @@ name: blink-connector
 description: >
   Call any linked Blink Connector via the Blink AI Gateway. Supports Notion,
   Slack, Discord, Google (Gmail, Drive, Calendar, Docs, Sheets, Slides),
-  HubSpot, Airtable, Microsoft (Outlook, Teams, OneDrive), LinkedIn, Salesforce.
+  HubSpot, Airtable, Microsoft (Outlook, Teams, OneDrive, Calendar), LinkedIn,
+  Salesforce, GitHub, Jira, Asana, Linear, Attio, Pipedrive, Zoom, Stripe,
+  Shopify, Figma, Twitter, Instagram, TikTok, YouTube, Loom, Mailchimp,
+  Typeform, Calendly, Etsy, Vercel.
   Use when the user asks you to interact with a connected third-party service.
 metadata:
   { "blink": { "requires_env": ["BLINK_API_KEY", "BLINK_AGENT_ID"] } }
@@ -26,7 +29,11 @@ bash skills/blink-connector/scripts/call.sh PROVIDER /endpoint [METHOD] [JSON_PA
 | Discord | `discord` |
 | HubSpot | `hubspot` |
 | Airtable | `airtable` |
-| Microsoft (Outlook/Teams/OneDrive) | `microsoft` |
+| Microsoft (legacy monolithic) | `microsoft` |
+| Microsoft Outlook | `microsoft_outlook` |
+| Microsoft Calendar | `microsoft_calendar` |
+| Microsoft OneDrive | `microsoft_onedrive` |
+| Microsoft Teams | `microsoft_teams` |
 | LinkedIn | `linkedin` |
 | Salesforce | `salesforce` |
 | Gmail | `google_gmail` |
@@ -35,6 +42,26 @@ bash skills/blink-connector/scripts/call.sh PROVIDER /endpoint [METHOD] [JSON_PA
 | Google Docs | `google_docs` |
 | Google Sheets | `google_sheets` |
 | Google Slides | `google_slides` |
+| GitHub | `github` |
+| Jira | `jira` |
+| Asana | `asana` |
+| Linear | `linear` |
+| Attio | `attio` |
+| Pipedrive | `pipedrive` |
+| Zoom | `zoom` |
+| Stripe | `stripe` |
+| Shopify | `shopify` |
+| Figma | `figma` |
+| Twitter | `twitter` |
+| Instagram | `instagram` |
+| TikTok | `tiktok` |
+| YouTube | `youtube` |
+| Loom | `loom` |
+| Mailchimp | `mailchimp` |
+| Typeform | `typeform` |
+| Calendly | `calendly` |
+| Etsy | `etsy` |
+| Vercel | `vercel` |
 
 ## Examples
 
@@ -97,6 +124,12 @@ A 401 response means the connector is not linked — ask the user to connect it 
 
 For provider-specific documentation with more examples, see individual skills:
 blink-notion, blink-slack, blink-discord, blink-hubspot, blink-airtable,
-blink-microsoft, blink-linkedin, blink-salesforce,
+blink-microsoft (deprecated), blink-microsoft-outlook, blink-microsoft-calendar,
+blink-microsoft-onedrive, blink-microsoft-teams,
+blink-linkedin, blink-salesforce,
 blink-google-gmail, blink-google-drive, blink-google-calendar,
-blink-google-docs, blink-google-sheets, blink-google-slides
+blink-google-docs, blink-google-sheets, blink-google-slides,
+blink-github, blink-jira, blink-asana, blink-linear, blink-attio,
+blink-pipedrive, blink-zoom, blink-stripe, blink-shopify, blink-figma,
+blink-twitter, blink-instagram, blink-tiktok, blink-youtube, blink-loom,
+blink-mailchimp, blink-typeform, blink-calendly, blink-etsy, blink-vercel

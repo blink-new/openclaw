@@ -1,9 +1,18 @@
-#!/usr/bin/env bash
-# Generic Blink connector call via Blink CLI
-# Usage: call.sh PROVIDER /endpoint [GET|POST|PATCH|DELETE] [json_params] [account_id]
-# Example: call.sh notion /search POST '{"query":"meeting notes"}'
-set -euo pipefail
-PROVIDER="${1:-}"; METHOD="${2:-}"; HTTP_METHOD="${3:-GET}"; PARAMS="${4:-{}}"; ACCOUNT="${5:-}"
-[ -z "$PROVIDER" ] || [ -z "$METHOD" ] && echo "Usage: call.sh PROVIDER /endpoint [GET|POST|PATCH|DELETE] [json_params]" && exit 1
-ACCOUNT_OPT=""; [ -n "$ACCOUNT" ] && ACCOUNT_OPT="--account $ACCOUNT"
-blink connector exec "$PROVIDER" "$METHOD" "$PARAMS" --method "$HTTP_METHOD" $ACCOUNT_OPT
+#!/bin/sh
+PROVIDER="microsoft_outlook"
+ENDPOINT="$1"
+METHOD="${2:-GET}"
+BODY="$3"
+ACCOUNT_ID="$4"
+BASE_URL="${BLINK_APIS_URL:-https://core.blink.new}"
+
+PAYLOAD="{\"method\":\"$ENDPOINT\",\"http_method\":\"$METHOD\""
+[ -n "$ACCOUNT_ID" ] && PAYLOAD="$PAYLOAD,\"account_id\":\"$ACCOUNT_ID\""
+[ -n "$BODY" ] && PAYLOAD="$PAYLOAD,\"params\":$BODY"
+PAYLOAD="$PAYLOAD}"
+
+curl -sf -X POST "$BASE_URL/v1/connectors/$PROVIDER/execute" \
+  -H "Authorization: Bearer $BLINK_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "x-blink-agent-id: $BLINK_AGENT_ID" \
+  -d "$PAYLOAD"

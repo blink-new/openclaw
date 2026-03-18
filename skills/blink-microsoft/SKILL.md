@@ -1,6 +1,10 @@
 ---
 name: blink-microsoft
 description: >
+  **DEPRECATED**: Use the split skills instead: `blink-microsoft-outlook`,
+  `blink-microsoft-calendar`, `blink-microsoft-onedrive`, `blink-microsoft-teams`.
+  Each provides focused scopes and better token management.
+
   Access Microsoft 365 services: Outlook email, Teams messages, OneDrive files,
   and Calendar events. Use when asked to check email, send messages, manage
   files, or schedule meetings via Microsoft. Requires a linked Microsoft connection.
