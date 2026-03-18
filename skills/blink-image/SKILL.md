@@ -29,10 +29,12 @@ bash scripts/generate.sh "A futuristic city skyline" "fal-ai/nano-banana-pro"
 bash scripts/generate.sh "A cozy coffee shop interior" "fal-ai/nano-banana" 4
 ```
 
-## Generate in WebP format (smaller file size)
+## Generate with a specific count and model
 ```bash
-bash scripts/generate.sh "Product photo of a red sneaker on white background" "fal-ai/nano-banana" 1 "webp" 85
+bash scripts/generate.sh "Product photo of a red sneaker on white background" "fal-ai/nano-banana-pro" 2
 ```
+
+> Note: Output format (jpeg/webp/png) is determined by the model, not a script parameter.
 
 ## Edit an existing image (image-to-image)
 ```bash

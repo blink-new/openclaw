@@ -11,7 +11,7 @@ FILE="${1:-}"
 [ -z "$FILE" ] && echo "Usage: upload-file.sh <file_path>" && exit 1
 [ ! -f "$FILE" ] && echo "Error: File not found: $FILE" && exit 1
 
-DATA=$(base64 -i "$FILE" 2>/dev/null || base64 "$FILE")
+DATA=$(base64 -w 0 "$FILE" 2>/dev/null || base64 -b 0 "$FILE" 2>/dev/null || base64 "$FILE" | tr -d '\n')
 MIME_TYPE=$(file --mime-type -b "$FILE" 2>/dev/null || echo "image/jpeg")
 FILENAME=$(basename "$FILE")
 

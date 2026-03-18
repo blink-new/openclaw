@@ -70,12 +70,6 @@ bash scripts/animate-file.sh \
 ls -lt /data/agents/main/agent/ | head -10
 ```
 
-## Generate without audio
-```bash
-bash scripts/generate.sh "A timelapse of a city at night" \
-  "fal-ai/veo3.1/fast" "5s" "16:9" "" "false"
-```
-
 ## Models available
 
 ### Text-to-Video
