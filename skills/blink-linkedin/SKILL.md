@@ -14,23 +14,23 @@ Access the user's LinkedIn account. Provider key: `linkedin`.
 
 ## Get your profile
 ```bash
-bash scripts/call.sh linkedin /me GET
+bash scripts/call.sh /me GET
 ```
 
 ## Get profile with specific fields
 ```bash
-bash scripts/call.sh linkedin /me GET \
+bash scripts/call.sh /me GET \
   '{"fields": "id,localizedFirstName,localizedLastName,profilePicture"}'
 ```
 
 ## Get user info (OpenID Connect)
 ```bash
-bash scripts/call.sh linkedin /userinfo GET
+bash scripts/call.sh /userinfo GET
 ```
 
 ## Create a text post (share)
 ```bash
-bash scripts/call.sh linkedin /ugcPosts POST '{
+bash scripts/call.sh /ugcPosts POST '{
   "author": "urn:li:person:PERSON_ID",
   "lifecycleState": "PUBLISHED",
   "specificContent": {
@@ -64,10 +64,10 @@ UPLOAD=$(bash scripts/upload-image.sh "https://example.com/photo.jpg")
 ASSET_URN=$(echo "$UPLOAD" | python3 -c "import json,sys; print(json.loads(sys.stdin.read())['data']['asset_urn'])")
 
 # Step 2: Get your person ID
-bash scripts/call.sh linkedin /userinfo GET
+bash scripts/call.sh /userinfo GET
 
 # Step 3: Create post with image
-bash scripts/call.sh linkedin /ugcPosts POST '{
+bash scripts/call.sh /ugcPosts POST '{
   "author": "urn:li:person:PERSON_ID",
   "lifecycleState": "PUBLISHED",
   "specificContent": {
