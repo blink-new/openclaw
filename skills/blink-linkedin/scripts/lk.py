@@ -75,96 +75,34 @@ def check_messages(api):
         print(f"• {BOLD}{participants}{RESET}")
         print(f"  {snippet[:100]}...")
 
-def _extract_post_info(item):
-    """Extract author, timestamp, content, and activity URN from a raw Voyager post item."""
-    # Activity URN (for liking/commenting via blink connector)
-    urn = item.get('updateMetadata', {}).get('urn', '') or item.get('*updateMetadata', '')
-    # Normalise to urn:li:activity: format
-    if 'activity:' not in urn:
-        urn = ''
-
-    # Author name
-    actor = item.get('actor', {})
-    name = actor.get('name', {}).get('text', '') if isinstance(actor.get('name'), dict) else ''
-
-    # Timestamp (ms epoch)
-    created_ms = item.get('actor', {}).get('subDescription', {}).get('text', '')
-    created_at_ms = item.get('created', {}).get('time', 0) or 0
-
-    # Content text
-    commentary = (
-        item.get('commentary', {}).get('text', {}).get('text', '')
-        if isinstance(item.get('commentary'), dict)
-        else item.get('commentary', '')
-    )
-    # Fall back to reshared content
-    if not commentary:
-        content_block = item.get('content', {})
-        if isinstance(content_block, dict):
-            commentary = content_block.get('description', {}).get('text', '') or ''
-
-    return {
-        'urn': urn,
-        'author': name,
-        'created_ms': created_at_ms,
-        'content': commentary,
-        'age': created_ms,
-    }
-
-
 def feed(api, count=10):
-    """Fetch the most recent N posts from the home feed, newest first."""
-    # Fetch more than needed (CHRONOLOGICAL = oldest-first from API), then sort descending.
-    fetch_count = min(max(count * 3, 30), 100)
-    try:
-        # Use the internal Voyager endpoint directly so we can request CHRONOLOGICAL
-        # and then re-sort newest-first in Python.
-        params = {
-            "count": str(fetch_count),
-            "q": "chronFeed",
-            "start": 0,
-        }
-        res = api._fetch(
-            "/feed/updatesV2",
-            params=params,
-            headers={"accept": "application/vnd.linkedin.normalized+json+2.1"},
-        )
-        raw = res.json()
-        included = raw.get("included", [])
+    """Fetch the most recent N posts from the home feed, newest first.
 
-        # Filter to actual post update elements (have 'commentary' or 'content' + actor)
-        posts = [
-            _extract_post_info(item)
-            for item in included
-            if item.get('actor') and (item.get('commentary') or item.get('content'))
-        ]
-
-        # Sort newest-first by epoch ms
-        posts.sort(key=lambda p: p['created_ms'], reverse=True)
-        posts = posts[:count]
-    except Exception:
-        # Fallback to the library method if direct call fails
-        raw_posts = api.get_feed_posts(limit=fetch_count)
-        posts = [
-            {
-                'urn': '',
-                'author': p.get('author_name', 'Unknown'),
-                'created_ms': 0,
-                'content': p.get('content', ''),
-                'age': p.get('old', ''),
-            }
-            for p in raw_posts
-        ][:count]
+    Uses the library's get_feed_posts() which orders posts via the *elements URN
+    array that LinkedIn returns — this IS the canonical newest-first order from
+    LinkedIn's own API. No client-side sorting needed or applied.
+    Each post's 'url' field contains the full LinkedIn URL with the activity URN.
+    """
+    posts = api.get_feed_posts(limit=count)
 
     print(f"{BOLD}LinkedIn Feed — {count} most recent posts:{RESET}\n")
-    for i, post in enumerate(posts, 1):
-        author = post['author'] or 'Unknown'
-        content = post['content'].replace('\n', ' ')
-        urn_hint = f"  {BLUE}URN: {post['urn']}{RESET}" if post['urn'] else ''
-        print(f"{i}. {BOLD}{author}{RESET}")
+    for i, post in enumerate(posts[:count], 1):
+        author = post.get('author_name', 'Unknown')
+        age = post.get('old', '').strip()
+        content = post.get('content', '(no text)').replace('\n', ' ')
+        url = post.get('url', '')
+
+        # Extract activity URN from the full URL for use with blink linkedin like/comment
+        urn = ''
+        if 'urn:li:activity:' in url:
+            urn = 'urn:li:activity:' + url.split('urn:li:activity:')[-1].rstrip('/')
+        elif 'urn:li:ugcPost:' in url:
+            urn = 'urn:li:ugcPost:' + url.split('urn:li:ugcPost:')[-1].rstrip('/')
+
+        print(f"{i}. {BOLD}{author}{RESET}" + (f"  {BLUE}({age}){RESET}" if age else ''))
         print(f"   {content[:250]}{'…' if len(content) > 250 else ''}")
-        if urn_hint:
-            print(urn_hint)
+        if urn:
+            print(f"   {BLUE}URN: {urn}{RESET}")
         print()
 
 def main():
