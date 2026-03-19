@@ -14,34 +14,34 @@ Access the user's Airtable bases and records. Provider key: `airtable`.
 
 ## List all bases
 ```bash
-bash scripts/call.sh /meta/bases GET
+blink connector exec airtable /meta/bases GET
 ```
 
 ## Get base schema (tables + fields)
 ```bash
-bash scripts/call.sh /meta/bases/BASE_ID/tables GET
+blink connector exec airtable /meta/bases/BASE_ID/tables GET
 ```
 
 ## List records in a table
 ```bash
-bash scripts/call.sh /BASE_ID/TABLE_NAME_OR_ID GET \
+blink connector exec airtable /BASE_ID/TABLE_NAME_OR_ID GET \
   '{"maxRecords": 50, "view": "Grid view"}'
 ```
 
 ## Filter records
 ```bash
-bash scripts/call.sh /BASE_ID/TABLE_NAME_OR_ID GET \
+blink connector exec airtable /BASE_ID/TABLE_NAME_OR_ID GET \
   '{"filterByFormula": "AND({Status}=\"In Progress\",{Assignee}=\"Alice\")", "maxRecords": 20}'
 ```
 
 ## Get a single record
 ```bash
-bash scripts/call.sh /BASE_ID/TABLE_NAME/RECORD_ID GET
+blink connector exec airtable /BASE_ID/TABLE_NAME/RECORD_ID GET
 ```
 
 ## Create records
 ```bash
-bash scripts/call.sh /BASE_ID/TABLE_NAME POST '{
+blink connector exec airtable /BASE_ID/TABLE_NAME POST '{
   "records": [{
     "fields": {
       "Name": "New Task",
@@ -55,7 +55,7 @@ bash scripts/call.sh /BASE_ID/TABLE_NAME POST '{
 
 ## Update a record
 ```bash
-bash scripts/call.sh /BASE_ID/TABLE_NAME/RECORD_ID PATCH '{
+blink connector exec airtable /BASE_ID/TABLE_NAME/RECORD_ID PATCH '{
   "fields": {
     "Status": "Done",
     "Completed Date": "2026-03-15"
@@ -65,7 +65,7 @@ bash scripts/call.sh /BASE_ID/TABLE_NAME/RECORD_ID PATCH '{
 
 ## Delete a record
 ```bash
-bash scripts/call.sh /BASE_ID/TABLE_NAME/RECORD_ID DELETE '{}'
+blink connector exec airtable /BASE_ID/TABLE_NAME/RECORD_ID DELETE '{}'
 ```
 
 ## Common use cases

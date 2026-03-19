@@ -11,46 +11,46 @@ metadata:
 
 # Blink Scrape
 
-Fetch web pages and extract structured information. No project key needed.
+Fetch web pages and extract structured information using `blink scrape`. No project key needed.
 
 ## Get clean text from a page
 ```bash
-bash scripts/scrape.sh "https://example.com" --text
+blink scrape "https://example.com" --text
 ```
 
 ## Extract specific data with AI
 ```bash
-bash scripts/scrape.sh "https://news.ycombinator.com" --extract "top 10 story titles and their URLs"
+blink scrape "https://news.ycombinator.com" --extract "top 10 story titles and their URLs"
 ```
 
 ## Extract product prices
 ```bash
-bash scripts/scrape.sh "https://shop.example.com/products" --extract "all product names and prices"
+blink scrape "https://shop.example.com/products" --extract "all product names and prices"
 ```
 
 ## Extract contact information
 ```bash
-bash scripts/scrape.sh "https://company.example.com/contact" --extract "email addresses and phone numbers"
+blink scrape "https://company.example.com/contact" --extract "email addresses and phone numbers"
 ```
 
 ## Get raw HTML/JSON response
 ```bash
-bash scripts/scrape.sh "https://api.example.com/data"
+blink scrape "https://api.example.com/data"
 ```
 
 ## Machine-readable JSON output
 ```bash
-bash scripts/scrape.sh "https://example.com" --extract "main headline" --json
+blink scrape "https://example.com" --extract "main headline" --json
 ```
 
-## Script signature
+## Command signature
 ```
-scrape.sh <url> [--text] [--extract <instructions>] [--json]
+blink scrape <url> [--text] [--extract <instructions>] [--json]
 ```
 - `url` — the page to scrape (required)
 - `--text` — return clean text (strip HTML tags)
 - `--extract <instructions>` — use AI to extract specific data
-- `--json` — return JSON output `{ url, content/extracted }`
+- `--json` — return JSON output
 
 ## Tips
 - For structured data (tables, lists, prices): use `--extract`

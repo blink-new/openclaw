@@ -1,12 +1,12 @@
 ---
 name: blink-connector
 description: >
-  Call any linked Blink Connector via the Blink AI Gateway. Supports Notion,
+  Call any linked Blink Connector via the Blink CLI. Supports Notion,
   Slack, Discord, Google (Gmail, Drive, Calendar, Docs, Sheets, Slides),
   HubSpot, Airtable, Microsoft (Outlook, Teams, OneDrive, Calendar), LinkedIn,
   Salesforce, GitHub, Jira, Asana, Linear, Attio, Pipedrive, Zoom, Stripe,
   Shopify, Figma, Twitter, Instagram, TikTok, YouTube, Loom, Mailchimp,
-  Typeform, Calendly, Etsy, Vercel.
+  Typeform, Calendly, Etsy, Vercel, Reddit.
   Use when the user asks you to interact with a connected third-party service.
 metadata:
   { "blink": { "requires_env": ["BLINK_API_KEY", "BLINK_AGENT_ID"] } }
@@ -14,12 +14,18 @@ metadata:
 
 # Blink Connector
 
-Call any linked connector via the shared helper script.
+Call any linked connector via the `blink connector exec` CLI command.
 
 ## Usage
 ```bash
-bash skills/blink-connector/scripts/call.sh PROVIDER /endpoint [METHOD] [JSON_PARAMS]
+blink connector exec <provider> <endpoint> [GET|POST|PUT|PATCH|DELETE] [json-params]
 ```
+
+## Check which connectors are linked
+```bash
+blink connector status
+```
+A missing provider means it's not linked — ask the user to connect it in the Agent Integrations tab.
 
 ## Provider Keys
 | Service | PROVIDER key |
@@ -29,7 +35,6 @@ bash skills/blink-connector/scripts/call.sh PROVIDER /endpoint [METHOD] [JSON_PA
 | Discord | `discord` |
 | HubSpot | `hubspot` |
 | Airtable | `airtable` |
-| Microsoft (legacy monolithic) | `microsoft` |
 | Microsoft Outlook | `microsoft_outlook` |
 | Microsoft Calendar | `microsoft_calendar` |
 | Microsoft OneDrive | `microsoft_onedrive` |
@@ -62,74 +67,86 @@ bash skills/blink-connector/scripts/call.sh PROVIDER /endpoint [METHOD] [JSON_PA
 | Calendly | `calendly` |
 | Etsy | `etsy` |
 | Vercel | `vercel` |
+| Reddit | `reddit` |
 
 ## Examples
 
 ```bash
 # Notion — search everything
-bash skills/blink-connector/scripts/call.sh notion /search POST '{"query": "meeting notes"}'
+blink connector exec notion /search POST '{"query": "meeting notes"}'
 
 # Slack — post a message
-bash skills/blink-connector/scripts/call.sh slack /chat.postMessage POST '{"channel":"#general","text":"Hello!"}'
+blink connector exec slack /chat.postMessage POST '{"channel":"#general","text":"Hello!"}'
 
 # Discord — list guilds
-bash skills/blink-connector/scripts/call.sh discord /users/@me/guilds GET
+blink connector exec discord /users/@me/guilds GET
 
 # Google Calendar — list upcoming events
-bash skills/blink-connector/scripts/call.sh google_calendar /calendars/primary/events GET '{"timeMin":"2026-03-15T00:00:00Z","maxResults":10,"singleEvents":true,"orderBy":"startTime"}'
+blink connector exec google_calendar /calendars/primary/events GET '{"timeMin":"2026-03-15T00:00:00Z","maxResults":10,"singleEvents":true,"orderBy":"startTime"}'
 
 # Gmail — list unread messages
-bash skills/blink-connector/scripts/call.sh google_gmail /users/me/messages GET '{"labelIds":"INBOX","q":"is:unread","maxResults":10}'
+blink connector exec google_gmail /users/me/messages GET '{"labelIds":"INBOX","q":"is:unread","maxResults":10}'
 
 # Google Drive — list files
-bash skills/blink-connector/scripts/call.sh google_drive /files GET '{"pageSize":20,"fields":"files(id,name,modifiedTime)"}'
+blink connector exec google_drive /files GET '{"pageSize":20,"fields":"files(id,name,modifiedTime)"}'
 
 # Google Sheets — read a range
-bash skills/blink-connector/scripts/call.sh google_sheets /spreadsheets/SPREADSHEET_ID/values/Sheet1!A1:Z100 GET
+blink connector exec google_sheets /spreadsheets/SPREADSHEET_ID/values/Sheet1!A1:Z100 GET
 
 # Google Docs — get document content
-bash skills/blink-connector/scripts/call.sh google_docs /documents/DOCUMENT_ID GET
+blink connector exec google_docs /documents/DOCUMENT_ID GET
 
 # Google Slides — get presentation
-bash skills/blink-connector/scripts/call.sh google_slides /presentations/PRESENTATION_ID GET
+blink connector exec google_slides /presentations/PRESENTATION_ID GET
 
 # HubSpot — search contacts
-bash skills/blink-connector/scripts/call.sh hubspot /crm/v3/objects/contacts/search POST '{"filterGroups":[{"filters":[{"propertyName":"email","operator":"CONTAINS_TOKEN","value":"example.com"}]}],"limit":10}'
+blink connector exec hubspot /crm/v3/objects/contacts/search POST '{"filterGroups":[{"filters":[{"propertyName":"email","operator":"CONTAINS_TOKEN","value":"example.com"}]}],"limit":10}'
 
 # Airtable — list bases
-bash skills/blink-connector/scripts/call.sh airtable /meta/bases GET
+blink connector exec airtable /meta/bases GET
 
-# Airtable — list records
-bash skills/blink-connector/scripts/call.sh airtable /BASE_ID/TABLE_NAME GET '{"maxRecords":50}'
+# Airtable — list records in a table
+blink connector exec airtable /BASE_ID/TABLE_NAME GET '{"maxRecords":50}'
 
-# Microsoft — list Outlook emails
-bash skills/blink-connector/scripts/call.sh microsoft /me/messages GET '{"$top":20,"$filter":"isRead eq false"}'
+# Microsoft Outlook — list inbox
+blink connector exec microsoft_outlook /me/messages GET '{"$top":"20","$select":"subject,from,receivedDateTime,isRead","$orderby":"receivedDateTime desc"}'
 
-# Microsoft — send email
-bash skills/blink-connector/scripts/call.sh microsoft /me/sendMail POST '{"message":{"subject":"Hello","body":{"contentType":"Text","content":"Hi!"},"toRecipients":[{"emailAddress":{"address":"user@example.com"}}]}}'
+# Microsoft Outlook — send email
+blink connector exec microsoft_outlook /me/sendMail POST '{"message":{"subject":"Hello","body":{"contentType":"Text","content":"Hi!"},"toRecipients":[{"emailAddress":{"address":"user@example.com"}}]}}'
 
 # LinkedIn — get profile
-bash skills/blink-connector/scripts/call.sh linkedin /me GET
+blink connector exec linkedin v2/userinfo GET
 
-# Salesforce — SOQL query for contacts
-bash skills/blink-connector/scripts/call.sh salesforce /services/data/v62.0/query GET '{"q":"SELECT Id,Name,Email FROM Contact LIMIT 20"}'
+# Salesforce — SOQL query
+blink connector exec salesforce /services/data/v62.0/query GET '{"q":"SELECT Id,Name,Email FROM Contact LIMIT 20"}'
+
+# GitHub — list repos
+blink connector exec github /user/repos GET
+
+# Jira — search issues
+blink connector exec jira /search GET '{"jql":"assignee=currentUser()","maxResults":20}'
+
+# Linear — GraphQL query
+blink connector exec linear '{ viewer { id name email teams { nodes { id name } } } }' POST
+
+# Stripe — list customers
+blink connector exec stripe /customers GET '{"limit":10}'
+
+# Zoom — list meetings
+blink connector exec zoom /users/me/meetings GET
+
+# Reddit — search posts
+blink connector exec reddit /search GET '{"q":"OpenClaw","sort":"new","limit":10}'
 ```
 
-## Check which connectors are linked
+## Scripting — capture output
 ```bash
-curl -sf -H "Authorization: Bearer ${BLINK_API_KEY}" -H "x-blink-agent-id: ${BLINK_AGENT_ID}" \
-  "${BLINK_APIS_URL:-https://core.blink.new}/v1/connectors/linked"
+# Get a value from JSON response
+RESULT=$(blink connector exec github /user/repos GET --json)
+echo "$RESULT" | python3 -c "import json,sys; repos=json.load(sys.stdin)['data']; [print(r['full_name']) for r in repos[:5]]"
 ```
-A 401 response means the connector is not linked — ask the user to connect it in the Agent Integrations tab.
 
-For provider-specific documentation with more examples, see individual skills:
-blink-notion, blink-slack, blink-discord, blink-hubspot, blink-airtable,
-blink-microsoft (deprecated), blink-microsoft-outlook, blink-microsoft-calendar,
-blink-microsoft-onedrive, blink-microsoft-teams,
-blink-linkedin, blink-salesforce,
-blink-google-gmail, blink-google-drive, blink-google-calendar,
-blink-google-docs, blink-google-sheets, blink-google-slides,
-blink-github, blink-jira, blink-asana, blink-linear, blink-attio,
-blink-pipedrive, blink-zoom, blink-stripe, blink-shopify, blink-figma,
-blink-twitter, blink-instagram, blink-tiktok, blink-youtube, blink-loom,
-blink-mailchimp, blink-typeform, blink-calendly, blink-etsy, blink-vercel
+## Multiple accounts
+```bash
+blink connector exec github /user/repos GET --account acct_xxx
+```

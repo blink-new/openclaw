@@ -13,32 +13,32 @@ Interact with the user's linked Discord account/server. Provider key: `discord`.
 
 ## Get current user info
 ```bash
-bash scripts/call.sh /users/@me GET
+blink connector exec discord /users/@me GET
 ```
 
 ## List servers (guilds)
 ```bash
-bash scripts/call.sh /users/@me/guilds GET
+blink connector exec discord /users/@me/guilds GET
 ```
 
 ## List channels in a server
 ```bash
-bash scripts/call.sh /guilds/GUILD_ID/channels GET
+blink connector exec discord /guilds/GUILD_ID/channels GET
 ```
 
 ## Read recent messages from a channel
 ```bash
-bash scripts/call.sh /channels/CHANNEL_ID/messages GET '{"limit": 20}'
+blink connector exec discord /channels/CHANNEL_ID/messages GET '{"limit": 20}'
 ```
 
 ## Send a message to a channel
 ```bash
-bash scripts/call.sh /channels/CHANNEL_ID/messages POST '{"content": "Hello from your agent!"}'
+blink connector exec discord /channels/CHANNEL_ID/messages POST '{"content": "Hello from your agent!"}'
 ```
 
 ## Get server members
 ```bash
-bash scripts/call.sh /guilds/GUILD_ID/members GET '{"limit": 50}'
+blink connector exec discord /guilds/GUILD_ID/members GET '{"limit": 50}'
 ```
 
 ## Common use cases

@@ -3,22 +3,21 @@ name: blink-app
 description: >
   Read and write data in a linked Blink project's database and file storage.
   Use to manage app data, query users, update records, upload/download files.
-  Requires BLINK_PROJECT_ID and BLINK_PROJECT_KEY secrets to be set first.
+  Requires BLINK_PROJECT_ID secret to be set first.
 metadata:
-  { "blink": { "requires_env": ["BLINK_API_KEY", "BLINK_AGENT_ID", "BLINK_PROJECT_ID", "BLINK_PROJECT_KEY"] } }
+  { "blink": { "requires_env": ["BLINK_API_KEY", "BLINK_AGENT_ID", "BLINK_PROJECT_ID"] } }
 ---
 
 # Blink App — Project Database & Storage
 
-Access a linked Blink project's isolated SQLite database and file storage.
+Access a linked Blink project's isolated SQLite database and file storage using `blink db` and `blink storage`.
 
 ## Setup (one-time)
-Store your project credentials as agent secrets:
+Store your project ID as an agent secret:
 ```bash
 blink secrets set BLINK_PROJECT_ID proj_xxx
-blink secrets set BLINK_PROJECT_KEY blnk_sk_xxx
 ```
-Get these from **blink.new → your project → Settings → API Keys**.
+Get your project ID from **blink.new → your project → Settings → API Keys**.
 
 ---
 
@@ -26,32 +25,35 @@ Get these from **blink.new → your project → Settings → API Keys**.
 
 ### Query the database
 ```bash
-bash scripts/db-query.sh "SELECT * FROM users LIMIT 10"
+blink db query $BLINK_PROJECT_ID "SELECT * FROM users LIMIT 10"
 ```
 
 ### Count records
 ```bash
-bash scripts/db-query.sh "SELECT count(*) as total FROM orders WHERE status = 'pending'"
+blink db query $BLINK_PROJECT_ID "SELECT count(*) as total FROM orders WHERE status = 'pending'"
 ```
 
 ### Insert a record
 ```bash
-bash scripts/db-query.sh "INSERT INTO tasks (id, title, done) VALUES ('t_123', 'My task', 0)"
+blink db query $BLINK_PROJECT_ID "INSERT INTO tasks (id, title, done) VALUES ('t_123', 'My task', 0)"
 ```
 
 ### Execute a SQL file
 ```bash
-bash scripts/db-exec.sh schema.sql
+eval $(blink use $BLINK_PROJECT_ID --export)
+blink db exec schema.sql
 ```
 
 ### List all tables
 ```bash
-bash scripts/db-list.sh
+eval $(blink use $BLINK_PROJECT_ID --export)
+blink db list
 ```
 
 ### Show rows in a table
 ```bash
-bash scripts/db-list.sh users
+eval $(blink use $BLINK_PROJECT_ID --export)
+blink db list users
 ```
 
 ---
@@ -60,35 +62,35 @@ bash scripts/db-list.sh users
 
 ### Upload a file
 ```bash
-bash scripts/storage-upload.sh ./report.pdf reports/2024/report.pdf
+blink storage upload $BLINK_PROJECT_ID ./report.pdf --path reports/2024/report.pdf
 ```
 
 ### List files
 ```bash
-bash scripts/storage-list.sh
-bash scripts/storage-list.sh images/
+blink storage list $BLINK_PROJECT_ID
+blink storage list $BLINK_PROJECT_ID images/
 ```
 
 ### Get a public URL for a file
 ```bash
-bash scripts/storage-url.sh images/logo.png
+blink storage url $BLINK_PROJECT_ID images/logo.png
 ```
 
 ### Download a file
 ```bash
-bash scripts/storage-download.sh reports/2024/report.pdf ./local-report.pdf
+blink storage download $BLINK_PROJECT_ID reports/2024/report.pdf ./local-report.pdf
 ```
 
 ---
 
-## Script signatures
+## Command signatures
 ```
-db-query.sh <sql>
-db-exec.sh <file.sql>
-db-list.sh [table]
-storage-upload.sh <local_file> [storage_path]
-storage-list.sh [prefix]
-storage-url.sh <storage_path>
-storage-download.sh <storage_path> [output_file]
+blink db query <project_id> <sql>
+blink db exec <file.sql>             # requires: eval $(blink use $BLINK_PROJECT_ID --export)
+blink db list [table]                # requires: eval $(blink use $BLINK_PROJECT_ID --export)
+blink storage upload <project_id> <local_file> [--path <storage_path>]
+blink storage list <project_id> [prefix]
+blink storage url <project_id> <storage_path>
+blink storage download <project_id> <storage_path> [output_file]
 ```
-All scripts use `$BLINK_PROJECT_ID` and `$BLINK_PROJECT_KEY` from the agent secrets vault.
+All commands use `$BLINK_PROJECT_ID` from the agent secrets vault.

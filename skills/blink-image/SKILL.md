@@ -16,45 +16,44 @@ All images are charged to your Blink workspace credits.
 
 ## Generate an image from text
 ```bash
-bash scripts/generate.sh "A serene mountain lake at golden hour, photorealistic"
+blink ai image "A serene mountain lake at golden hour, photorealistic"
 ```
 
 ## Generate with a specific model
 ```bash
-bash scripts/generate.sh "A futuristic city skyline" "fal-ai/nano-banana-pro"
+blink ai image "A futuristic city skyline" --model fal-ai/nano-banana-pro
 ```
 
 ## Generate multiple images at once
 ```bash
-bash scripts/generate.sh "A cozy coffee shop interior" "fal-ai/nano-banana" 4
+blink ai image "A cozy coffee shop interior" --model fal-ai/nano-banana --n 4
 ```
 
 ## Generate with a specific count and model
 ```bash
-bash scripts/generate.sh "Product photo of a red sneaker on white background" "fal-ai/nano-banana-pro" 2
+blink ai image "Product photo of a red sneaker on white background" --model fal-ai/nano-banana-pro --n 2
 ```
 
-> Note: Output format (jpeg/webp/png) is determined by the model, not a script parameter.
+> Note: Output format (jpeg/webp/png) is determined by the model, not a parameter.
 
 ## Edit an existing image (image-to-image)
 ```bash
-bash scripts/edit.sh "Make this look like a watercolor painting" "https://example.com/photo.jpg"
+blink ai image-edit "Make this look like a watercolor painting" "https://example.com/photo.jpg"
 ```
 
 ## Edit with high-quality model
 ```bash
-bash scripts/edit.sh "Add snow to this landscape" "https://example.com/landscape.jpg" "fal-ai/nano-banana-pro/edit"
+blink ai image-edit "Add snow to this landscape" "https://example.com/landscape.jpg" --model fal-ai/nano-banana-pro/edit
 ```
 
 ## Edit a LOCAL file (user uploaded a photo via Telegram/Discord/Slack)
-When a user sends you a photo, OpenClaw saves it to disk. Use `upload-file.sh` first to get a URL, then edit it.
+When a user sends you a photo, OpenClaw saves it to disk. Use `blink ai animate` for local files (it handles upload automatically), or use `blink ai image-edit` with a URL:
 ```bash
-# Step 1: Upload the local file to get a public URL
-UPLOAD=$(bash scripts/upload-file.sh "/data/agents/main/agent/photo.jpg")
-URL=$(echo "$UPLOAD" | python3 -c "import json,sys; print(json.loads(sys.stdin.read())['url'])")
+# Animate/transform a local file directly (handles upload automatically)
+blink ai animate "Make this a professional studio headshot with dark background" /data/agents/main/agent/photo.jpg
 
-# Step 2: Edit the image using the URL
-bash scripts/edit.sh "Make this a professional studio headshot with dark background" "$URL"
+# Or use image-edit if you have a public URL
+blink ai image-edit "Make this a professional studio headshot with dark background" "https://example.com/photo.jpg"
 ```
 
 ## Find where OpenClaw saved an attachment
@@ -71,18 +70,9 @@ ls -lt /data/agents/main/agent/ | head -10
 | `fal-ai/nano-banana/edit` | Edit/transform existing images. |
 | `fal-ai/nano-banana-pro/edit` | High-quality image editing. |
 
-## Response format
-Returns JSON with image URLs:
-```json
-{
-  "result": { "data": [{ "url": "https://fal.media/files/...", "width": 1024, "height": 1024 }] },
-  "usage": { "creditsCharged": 2.5, "costUSD": 0.006 }
-}
-```
-
 ## Common use cases
 - "Generate a logo for my startup" → generate with clear prompt
 - "Create a product image on a white background" → generate
-- "Turn this photo into an oil painting" → edit with style prompt
-- "Make 4 variations of this design" → generate with n=4
+- "Turn this photo into an oil painting" → image-edit with style prompt
+- "Make 4 variations of this design" → generate with --n 4
 - "Create a banner image for my Discord" → generate with aspect ratio guidance in prompt

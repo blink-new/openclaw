@@ -14,42 +14,42 @@ Access the user's linked GitHub account. Provider key: `github`.
 
 ## List my repositories
 ```bash
-bash scripts/call.sh /user/repos GET
+blink connector exec github /user/repos GET
 ```
 
 ## Get a specific issue
 ```bash
-bash scripts/call.sh /repos/{owner}/{repo}/issues/{number} GET
+blink connector exec github /repos/{owner}/{repo}/issues/{number} GET
 ```
 
 ## Create an issue
 ```bash
-bash scripts/call.sh /repos/{owner}/{repo}/issues POST '{"title":"Bug: something broken","body":"Steps to reproduce..."}'
+blink connector exec github /repos/{owner}/{repo}/issues POST '{"title":"Bug: something broken","body":"Steps to reproduce..."}'
 ```
 
 ## List open pull requests
 ```bash
-bash scripts/call.sh /repos/{owner}/{repo}/pulls GET '{"state":"open"}'
+blink connector exec github /repos/{owner}/{repo}/pulls GET '{"state":"open"}'
 ```
 
 ## Get PR details
 ```bash
-bash scripts/call.sh /repos/{owner}/{repo}/pulls/{pull_number} GET
+blink connector exec github /repos/{owner}/{repo}/pulls/{pull_number} GET
 ```
 
 ## List repo issues
 ```bash
-bash scripts/call.sh /repos/{owner}/{repo}/issues GET '{"state":"open","per_page":20}'
+blink connector exec github /repos/{owner}/{repo}/issues GET '{"state":"open","per_page":20}'
 ```
 
 ## Get workflow runs (CI status)
 ```bash
-bash scripts/call.sh /repos/{owner}/{repo}/actions/runs GET '{"per_page":5}'
+blink connector exec github /repos/{owner}/{repo}/actions/runs GET '{"per_page":5}'
 ```
 
 ## Search code
 ```bash
-bash scripts/call.sh /search/code GET '{"q":"function+repo:{owner}/{repo}"}'
+blink connector exec github /search/code GET '{"q":"function+repo:{owner}/{repo}"}'
 ```
 
 ## Common use cases

@@ -18,8 +18,8 @@ Manage the user's LinkedIn presence using the `blink linkedin` CLI.
 |---|---|---|
 | View profile | `blink linkedin me` | ✅ |
 | Publish text post | `blink linkedin post "..."` | ✅ |
-| Post with image | `blink linkedin post` + upload script | ✅ |
-| Post with video | `blink linkedin post` + upload script | ✅ |
+| Post with image | `blink linkedin upload-media` + connector exec | ✅ |
+| Post with video | `blink linkedin upload-media` + connector exec | ✅ |
 | Delete own post | `blink linkedin delete <urn>` | ✅ |
 | Read own posts | — | ❌ needs r_member_social (LinkedIn restricted scope) |
 | Read/add comments | — | ❌ needs LinkedIn Partner API |
@@ -56,13 +56,13 @@ POST_URN=$(blink linkedin post "Hello LinkedIn" --json | python3 -c "import json
 
 ```bash
 # Step 1: Upload image to LinkedIn, get asset URN
-ASSET_URN=$(bash scripts/upload-image.sh "https://example.com/photo.jpg" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['asset_urn'])")
+ASSET_URN=$(blink linkedin upload-media "https://example.com/photo.jpg" --json | python3 -c "import json,sys; print(json.load(sys.stdin)['asset_urn'])")
 
 # Step 2: Get your person ID
 PERSON_ID=$(blink linkedin me --json | python3 -c "import json,sys; print(json.load(sys.stdin)['sub'])")
 
-# Step 3: Post using blink connector exec (raw ugcPosts with media)
-blink connector exec linkedin ugcPosts --method POST --params "{
+# Step 3: Post with the image
+blink connector exec linkedin ugcPosts POST "{
   \"author\": \"urn:li:person:$PERSON_ID\",
   \"lifecycleState\": \"PUBLISHED\",
   \"specificContent\": {
@@ -76,17 +76,30 @@ blink connector exec linkedin ugcPosts --method POST --params "{
 }"
 ```
 
-Or use the convenience script:
-```bash
-bash scripts/post-with-image.sh "Check out this image!" "https://example.com/photo.jpg"
-```
-
 ---
 
 ## Post with a video
 
 ```bash
-bash scripts/post-with-video.sh "Watch our latest demo!" "https://example.com/demo.mp4"
+# Step 1: Upload video to LinkedIn, get asset URN
+ASSET_URN=$(blink linkedin upload-media "https://example.com/demo.mp4" --type video --json | python3 -c "import json,sys; print(json.load(sys.stdin)['asset_urn'])")
+
+# Step 2: Get your person ID
+PERSON_ID=$(blink linkedin me --json | python3 -c "import json,sys; print(json.load(sys.stdin)['sub'])")
+
+# Step 3: Post with the video
+blink connector exec linkedin ugcPosts POST "{
+  \"author\": \"urn:li:person:$PERSON_ID\",
+  \"lifecycleState\": \"PUBLISHED\",
+  \"specificContent\": {
+    \"com.linkedin.ugc.ShareContent\": {
+      \"shareCommentary\": {\"text\": \"Watch our latest demo!\"},
+      \"shareMediaCategory\": \"VIDEO\",
+      \"media\": [{\"status\": \"READY\", \"media\": \"$ASSET_URN\"}]
+    }
+  },
+  \"visibility\": {\"com.linkedin.ugc.MemberNetworkVisibility\": \"PUBLIC\"}
+}"
 ```
 
 ---
@@ -121,6 +134,6 @@ The post URN is returned when you create a post via `blink linkedin post --json`
 
 - "Post an update on LinkedIn" → `blink linkedin post "..."`
 - "What's my LinkedIn profile?" → `blink linkedin me`
-- "Share this image on LinkedIn" → `bash scripts/post-with-image.sh "..." "<url>"`
+- "Share this image on LinkedIn" → upload-media then connector exec ugcPosts
 - "Delete my LinkedIn post" → `blink linkedin delete "<urn>"`
-- "Post this video" → `bash scripts/post-with-video.sh "..." "<url>"`
+- "Post this video" → upload-media --type video then connector exec ugcPosts

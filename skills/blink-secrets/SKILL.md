@@ -11,50 +11,44 @@ metadata:
 
 # Blink Secrets
 
-Manage the encrypted secrets vault for this agent (or other agents in the workspace).
-Zero configuration on Claw machines — `BLINK_AGENT_ID` is already set.
+Manage the encrypted secrets vault using `blink secrets`. Zero configuration on Claw machines
+— `BLINK_AGENT_ID` is already set.
 
 ## List all secret key names
 ```bash
-bash scripts/list.sh
+blink secrets list
 ```
 
 ## Set or update a secret
 ```bash
-bash scripts/set.sh GITHUB_TOKEN ghp_xxx
-bash scripts/set.sh OPENAI_KEY sk-xxx
-bash scripts/set.sh DATABASE_URL postgres://user:pass@host/db
+blink secrets set GITHUB_TOKEN ghp_xxx
+blink secrets set OPENAI_KEY sk-xxx
+blink secrets set DATABASE_URL postgres://user:pass@host/db
 ```
 
 ## Delete a secret
 ```bash
-bash scripts/delete.sh OLD_API_KEY
+blink secrets delete OLD_API_KEY
 ```
 
 ## Cross-agent management (set secrets on another agent)
 ```bash
-bash scripts/set.sh --agent clw_other OPENAI_KEY sk-xxx
-bash scripts/list.sh --agent clw_other
-bash scripts/delete.sh --agent clw_other OLD_KEY
-```
-
-## Check what secrets are available
-```bash
-bash scripts/list.sh
-# Output: KEY names only (values are never shown for security)
+blink secrets set --agent clw_other OPENAI_KEY sk-xxx
+blink secrets list --agent clw_other
+blink secrets delete --agent clw_other OLD_KEY
 ```
 
 ## Rotate a key
 ```bash
-bash scripts/set.sh GITHUB_TOKEN ghp_new_value
+blink secrets set GITHUB_TOKEN ghp_new_value
 # Old value is replaced — no need to delete first
 ```
 
-## Script signatures
+## Command signatures
 ```
-list.sh [--agent <agent_id>]
-set.sh <key> <value> [--agent <agent_id>]
-delete.sh <key> [--agent <agent_id>]
+blink secrets list [--agent <agent_id>]
+blink secrets set <key> <value> [--agent <agent_id>]
+blink secrets delete <key> [--agent <agent_id>]
 ```
 All secrets are stored encrypted (AES-256-GCM) and never returned in plaintext via the API.
 After setting, the secret is immediately available as `$KEY_NAME` in all shell commands.

@@ -14,13 +14,13 @@ Post and read messages in the user's linked Slack workspace. Provider key: `slac
 
 ## List channels
 ```bash
-bash scripts/call.sh /conversations.list GET \
+blink connector exec slack /conversations.list GET \
   '{"types": "public_channel,private_channel", "limit": 50}'
 ```
 
 ## Send a message to a channel
 ```bash
-bash scripts/call.sh /chat.postMessage POST '{
+blink connector exec slack /chat.postMessage POST '{
   "channel": "#general",
   "text": "Hello from your Blink Claw agent!"
 }'
@@ -28,35 +28,35 @@ bash scripts/call.sh /chat.postMessage POST '{
 
 ## Send a DM to a user
 ```bash
-bash scripts/call.sh /conversations.open POST '{"users": "U12345678"}'
+blink connector exec slack /conversations.open POST '{"users": "U12345678"}'
 # Then use the returned channel ID:
-bash scripts/call.sh /chat.postMessage POST '{"channel": "D12345678", "text": "Direct message"}'
+blink connector exec slack /chat.postMessage POST '{"channel": "D12345678", "text": "Direct message"}'
 ```
 
 ## Read recent messages from a channel
 ```bash
-bash scripts/call.sh /conversations.history GET \
+blink connector exec slack /conversations.history GET \
   '{"channel": "C12345678", "limit": 20}'
 ```
 
 ## Get channel info
 ```bash
-bash scripts/call.sh /conversations.info GET '{"channel": "C12345678"}'
+blink connector exec slack /conversations.info GET '{"channel": "C12345678"}'
 ```
 
 ## List users
 ```bash
-bash scripts/call.sh /users.list GET '{"limit": 50}'
+blink connector exec slack /users.list GET '{"limit": 50}'
 ```
 
 ## Search messages
 ```bash
-bash scripts/call.sh /search.messages GET '{"query": "project deadline", "count": 10}'
+blink connector exec slack /search.messages GET '{"query": "project deadline", "count": 10}'
 ```
 
 ## Post with blocks (rich formatting)
 ```bash
-bash scripts/call.sh /chat.postMessage POST '{
+blink connector exec slack /chat.postMessage POST '{
   "channel": "#general",
   "blocks": [{
     "type": "section",

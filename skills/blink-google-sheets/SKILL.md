@@ -15,17 +15,17 @@ The SPREADSHEET_ID is in the sheet URL: `https://docs.google.com/spreadsheets/d/
 
 ## Read a range of cells
 ```bash
-bash scripts/call.sh /spreadsheets/SPREADSHEET_ID/values/Sheet1!A1:E20 GET
+blink connector exec google_sheets /spreadsheets/SPREADSHEET_ID/values/Sheet1!A1:E20 GET
 ```
 
 ## Read the whole sheet
 ```bash
-bash scripts/call.sh /spreadsheets/SPREADSHEET_ID/values/Sheet1 GET
+blink connector exec google_sheets /spreadsheets/SPREADSHEET_ID/values/Sheet1 GET
 ```
 
 ## Update cells
 ```bash
-bash scripts/call.sh /spreadsheets/SPREADSHEET_ID/values/Sheet1!A1 PUT '{
+blink connector exec google_sheets /spreadsheets/SPREADSHEET_ID/values/Sheet1!A1 PUT '{
   "range": "Sheet1!A1",
   "majorDimension": "ROWS",
   "values": [["Updated value"]]
@@ -34,20 +34,20 @@ bash scripts/call.sh /spreadsheets/SPREADSHEET_ID/values/Sheet1!A1 PUT '{
 
 ## Append a new row
 ```bash
-bash scripts/call.sh google_sheets "/spreadsheets/SPREADSHEET_ID/values/Sheet1:append?valueInputOption=RAW" POST '{
+blink connector exec google_sheets "/spreadsheets/SPREADSHEET_ID/values/Sheet1:append?valueInputOption=RAW" POST '{
   "values": [["New row", "column B", "column C"]]
 }'
 ```
 
 ## Get spreadsheet metadata (list sheets)
 ```bash
-bash scripts/call.sh /spreadsheets/SPREADSHEET_ID GET \
+blink connector exec google_sheets /spreadsheets/SPREADSHEET_ID GET \
   '{"fields": "sheets.properties"}'
 ```
 
 ## Batch update multiple ranges
 ```bash
-bash scripts/call.sh /spreadsheets/SPREADSHEET_ID/values:batchUpdate POST '{
+blink connector exec google_sheets /spreadsheets/SPREADSHEET_ID/values:batchUpdate POST '{
   "valueInputOption": "RAW",
   "data": [
     {"range": "Sheet1!A1", "values": [["Value 1"]]},

@@ -12,22 +12,22 @@ metadata:
 
 Access the user's linked Notion workspace. Before using, check that Notion is connected:
 ```bash
-bash scripts/status.sh
+blink connector status notion
 ```
 
 ## Search everything
 ```bash
-bash scripts/call.sh /search POST '{"query": "meeting notes", "filter": {"property": "object", "value": "page"}}'
+blink connector exec notion /search POST '{"query": "meeting notes", "filter": {"property": "object", "value": "page"}}'
 ```
 
 ## List all databases
 ```bash
-bash scripts/call.sh /search POST '{"filter": {"property": "object", "value": "database"}}'
+blink connector exec notion /search POST '{"filter": {"property": "object", "value": "database"}}'
 ```
 
 ## Query a database (with filters)
 ```bash
-bash scripts/call.sh /databases/DATABASE_ID/query POST '{
+blink connector exec notion /databases/DATABASE_ID/query POST '{
   "filter": {"property": "Status", "select": {"equals": "In Progress"}},
   "sorts": [{"property": "Due Date", "direction": "ascending"}]
 }'
@@ -35,13 +35,13 @@ bash scripts/call.sh /databases/DATABASE_ID/query POST '{
 
 ## Get a page's content
 ```bash
-bash scripts/call.sh /pages/PAGE_ID GET
-bash scripts/call.sh /blocks/PAGE_ID/children GET
+blink connector exec notion /pages/PAGE_ID GET
+blink connector exec notion /blocks/PAGE_ID/children GET
 ```
 
 ## Create a new page
 ```bash
-bash scripts/call.sh /pages POST '{
+blink connector exec notion /pages POST '{
   "parent": {"database_id": "DATABASE_ID"},
   "properties": {
     "Name": {"title": [{"text": {"content": "New Task"}}]},
@@ -52,7 +52,7 @@ bash scripts/call.sh /pages POST '{
 
 ## Update a page property
 ```bash
-bash scripts/call.sh /pages/PAGE_ID PATCH '{
+blink connector exec notion /pages/PAGE_ID PATCH '{
   "properties": {
     "Status": {"select": {"name": "Done"}}
   }
@@ -61,7 +61,7 @@ bash scripts/call.sh /pages/PAGE_ID PATCH '{
 
 ## Add content to a page
 ```bash
-bash scripts/call.sh /blocks/PAGE_ID/children PATCH '{
+blink connector exec notion /blocks/PAGE_ID/children PATCH '{
   "children": [{"object": "block", "type": "paragraph",
     "paragraph": {"rich_text": [{"type": "text", "text": {"content": "Added by agent"}}]}}]
 }'

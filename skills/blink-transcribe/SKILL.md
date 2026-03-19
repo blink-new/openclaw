@@ -16,29 +16,26 @@ charged to your Blink workspace credits.
 
 ## Transcribe a local file (most common — agent has the file on disk)
 ```bash
-bash scripts/transcribe.sh /data/recording.mp3
-bash scripts/transcribe.sh /tmp/voice_note.wav
-bash scripts/transcribe.sh /data/meeting.m4a en
+blink ai transcribe /data/recording.mp3
+blink ai transcribe /tmp/voice_note.wav
+blink ai transcribe /data/meeting.m4a --language en
 ```
 
 ## Transcribe a public URL
 ```bash
-bash scripts/transcribe.sh "https://example.com/podcast.mp3"
-bash scripts/transcribe.sh "https://example.com/lecture.mp3" "fr"
+blink ai transcribe "https://example.com/podcast.mp3"
+blink ai transcribe "https://example.com/lecture.mp3" --language fr
 ```
-
-The script auto-detects: if input starts with `http`, treats it as URL.
-Otherwise reads it as a local file, base64-encodes it, and uploads automatically.
 
 ## Save transcript to file
 ```bash
-bash scripts/transcribe.sh "https://example.com/meeting.mp3" | \
+blink ai transcribe "https://example.com/meeting.mp3" | \
   python3 -c "import json,sys; print(json.load(sys.stdin)['text'])" > /data/transcript.txt
 ```
 
 ## Get transcript with timestamps
 ```bash
-RESULT=$(bash scripts/transcribe.sh "https://example.com/audio.mp3")
+RESULT=$(blink ai transcribe "https://example.com/audio.mp3")
 echo "$RESULT" | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
@@ -52,7 +49,7 @@ for seg in (data.get('segments') or []):
 ```
 
 ## Supported audio formats
-mp3, wav, ogg, m4a, webm, flac, aac — any public HTTPS URL
+mp3, wav, ogg, m4a, webm, flac, aac — local files or public HTTPS URLs
 
 ## Common use cases
 - "Transcribe this Zoom recording" → transcribe audio URL

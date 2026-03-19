@@ -14,42 +14,42 @@ Access the user's linked Asana workspace. Provider key: `asana`.
 
 ## List workspaces
 ```bash
-bash scripts/call.sh /workspaces GET
+blink connector exec asana /workspaces GET
 ```
 
 ## Get my tasks
 ```bash
-bash scripts/call.sh /tasks GET '{"assignee":"me","workspace":"{workspace_gid}","opt_fields":"name,due_on,completed,notes"}'
+blink connector exec asana /tasks GET '{"assignee":"me","workspace":"{workspace_gid}","opt_fields":"name,due_on,completed,notes"}'
 ```
 
 ## Get a specific task
 ```bash
-bash scripts/call.sh /tasks/{task_gid} GET '{"opt_fields":"name,notes,due_on,assignee,completed,projects"}'
+blink connector exec asana /tasks/{task_gid} GET '{"opt_fields":"name,notes,due_on,assignee,completed,projects"}'
 ```
 
 ## Create a task
 ```bash
-bash scripts/call.sh /tasks POST '{"data":{"name":"New task","notes":"Task details","workspace":"{workspace_gid}","assignee":"me"}}'
+blink connector exec asana /tasks POST '{"data":{"name":"New task","notes":"Task details","workspace":"{workspace_gid}","assignee":"me"}}'
 ```
 
 ## Update a task (mark complete)
 ```bash
-bash scripts/call.sh /tasks/{task_gid} PUT '{"data":{"completed":true}}'
+blink connector exec asana /tasks/{task_gid} PUT '{"data":{"completed":true}}'
 ```
 
 ## List projects in a workspace
 ```bash
-bash scripts/call.sh /projects GET '{"workspace":"{workspace_gid}","opt_fields":"name,status,due_date"}'
+blink connector exec asana /projects GET '{"workspace":"{workspace_gid}","opt_fields":"name,status,due_date"}'
 ```
 
 ## Get tasks in a project
 ```bash
-bash scripts/call.sh /projects/{project_gid}/tasks GET '{"opt_fields":"name,due_on,assignee,completed"}'
+blink connector exec asana /projects/{project_gid}/tasks GET '{"opt_fields":"name,due_on,assignee,completed"}'
 ```
 
 ## Add a comment to a task
 ```bash
-bash scripts/call.sh /tasks/{task_gid}/stories POST '{"data":{"text":"Update: completed the first phase"}}'
+blink connector exec asana /tasks/{task_gid}/stories POST '{"data":{"text":"Update: completed the first phase"}}'
 ```
 
 ## Common use cases

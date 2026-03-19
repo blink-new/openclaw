@@ -14,47 +14,47 @@ Access the user's linked Pipedrive CRM. Provider key: `pipedrive`.
 
 ## List deals
 ```bash
-bash scripts/call.sh /deals GET '{"status":"open","limit":20}'
+blink connector exec pipedrive /deals GET '{"status":"open","limit":20}'
 ```
 
 ## Get a specific deal
 ```bash
-bash scripts/call.sh /deals/{id} GET
+blink connector exec pipedrive /deals/{id} GET
 ```
 
 ## Create a deal
 ```bash
-bash scripts/call.sh /deals POST '{"title":"New deal","value":5000,"currency":"USD"}'
+blink connector exec pipedrive /deals POST '{"title":"New deal","value":5000,"currency":"USD"}'
 ```
 
 ## Update a deal
 ```bash
-bash scripts/call.sh /deals/{id} PUT '{"status":"won"}'
+blink connector exec pipedrive /deals/{id} PUT '{"status":"won"}'
 ```
 
 ## List contacts (persons)
 ```bash
-bash scripts/call.sh /persons GET '{"limit":20}'
+blink connector exec pipedrive /persons GET '{"limit":20}'
 ```
 
 ## Search contacts
 ```bash
-bash scripts/call.sh /persons/search GET '{"term":"john","fields":"name,email"}'
+blink connector exec pipedrive /persons/search GET '{"term":"john","fields":"name,email"}'
 ```
 
 ## List organizations
 ```bash
-bash scripts/call.sh /organizations GET '{"limit":20}'
+blink connector exec pipedrive /organizations GET '{"limit":20}'
 ```
 
 ## List activities
 ```bash
-bash scripts/call.sh /activities GET '{"done":0,"limit":20}'
+blink connector exec pipedrive /activities GET '{"done":0,"limit":20}'
 ```
 
 ## Create an activity
 ```bash
-bash scripts/call.sh /activities POST '{"subject":"Follow-up call","type":"call","due_date":"2024-03-01","deal_id":"{dealId}"}'
+blink connector exec pipedrive /activities POST '{"subject":"Follow-up call","type":"call","due_date":"2024-03-01","deal_id":"{dealId}"}'
 ```
 
 ## Common use cases

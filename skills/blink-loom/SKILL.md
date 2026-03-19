@@ -14,32 +14,32 @@ Access the user's linked Loom account. Provider key: `loom`.
 
 ## List recordings
 ```bash
-bash scripts/call.sh /recordings GET '{"limit":20}'
+blink connector exec loom /recordings GET '{"limit":20}'
 ```
 
 ## Get a recording
 ```bash
-bash scripts/call.sh /recordings/{id} GET
+blink connector exec loom /recordings/{id} GET
 ```
 
 ## Get recording transcription
 ```bash
-bash scripts/call.sh /recordings/{id}/transcription GET
+blink connector exec loom /recordings/{id}/transcription GET
 ```
 
 ## List workspaces
 ```bash
-bash scripts/call.sh /workspaces GET
+blink connector exec loom /workspaces GET
 ```
 
 ## Get workspace folders
 ```bash
-bash scripts/call.sh /workspaces/{workspace_id}/folders GET
+blink connector exec loom /workspaces/{workspace_id}/folders GET
 ```
 
 ## Search recordings
 ```bash
-bash scripts/call.sh /recordings GET '{"search":"onboarding","limit":10}'
+blink connector exec loom /recordings GET '{"search":"onboarding","limit":10}'
 ```
 
 ## Common use cases

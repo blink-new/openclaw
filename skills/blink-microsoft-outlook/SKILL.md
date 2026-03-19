@@ -14,19 +14,19 @@ Access Outlook email via Microsoft Graph API. Provider key: `microsoft_outlook`.
 
 ## List inbox messages
 ```bash
-bash scripts/call.sh /me/messages GET \
+blink connector exec microsoft_outlook /me/messages GET \
   '{"$top":"20","$select":"subject,from,receivedDateTime,isRead","$orderby":"receivedDateTime desc"}'
 ```
 
 ## Search emails
 ```bash
-bash scripts/call.sh /me/messages GET \
+blink connector exec microsoft_outlook /me/messages GET \
   '{"$search":"\"project update\"","$select":"subject,from,receivedDateTime"}'
 ```
 
 ## Send email
 ```bash
-bash scripts/call.sh /me/sendMail POST '{
+blink connector exec microsoft_outlook /me/sendMail POST '{
   "message": {
     "subject": "Hello",
     "body": {"contentType": "Text", "content": "Hi there"},
@@ -37,23 +37,23 @@ bash scripts/call.sh /me/sendMail POST '{
 
 ## Get mail folders
 ```bash
-bash scripts/call.sh /me/mailFolders GET
+blink connector exec microsoft_outlook /me/mailFolders GET
 ```
 
 ## Mark message as read
 ```bash
-bash scripts/call.sh /me/messages/{id} PATCH '{"isRead":true}'
+blink connector exec microsoft_outlook /me/messages/{id} PATCH '{"isRead":true}'
 ```
 
 ## Move message to folder
 ```bash
-bash scripts/call.sh /me/messages/{id}/move POST \
+blink connector exec microsoft_outlook /me/messages/{id}/move POST \
   '{"destinationId":"archive"}'
 ```
 
 ## Delete message
 ```bash
-bash scripts/call.sh /me/messages/{id} DELETE
+blink connector exec microsoft_outlook /me/messages/{id} DELETE
 ```
 
 ## Common use cases

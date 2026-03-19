@@ -12,36 +12,36 @@ metadata:
 
 Access the user's linked Linear workspace. Provider key: `linear`.
 
-Note: Linear uses GraphQL. The `method` argument is the full GraphQL query/mutation string.
+Note: Linear uses GraphQL. Pass the full GraphQL query/mutation string as the first argument.
 
 ## List recent issues
 ```bash
-bash scripts/call.sh linear 'query { issues(first: 20, orderBy: updatedAt) { nodes { id title state { name } assignee { name } priority } } }' POST
+blink connector exec linear 'query { issues(first: 20, orderBy: updatedAt) { nodes { id title state { name } assignee { name } priority } } }' POST
 ```
 
 ## Get issues for a specific team
 ```bash
-bash scripts/call.sh linear 'query { team(id: "TEAM_ID") { issues(first: 20) { nodes { id title state { name } } } } }' POST
+blink connector exec linear 'query { team(id: "TEAM_ID") { issues(first: 20) { nodes { id title state { name } } } } }' POST
 ```
 
 ## Create an issue
 ```bash
-bash scripts/call.sh linear 'mutation { issueCreate(input: { title: "Fix login bug", description: "Steps...", teamId: "TEAM_ID", priority: 2 }) { issue { id title url } } }' POST
+blink connector exec linear 'mutation { issueCreate(input: { title: "Fix login bug", description: "Steps...", teamId: "TEAM_ID", priority: 2 }) { issue { id title url } } }' POST
 ```
 
 ## Update issue status
 ```bash
-bash scripts/call.sh linear 'mutation { issueUpdate(id: "ISSUE_ID", input: { stateId: "STATE_ID" }) { issue { id title state { name } } } }' POST
+blink connector exec linear 'mutation { issueUpdate(id: "ISSUE_ID", input: { stateId: "STATE_ID" }) { issue { id title state { name } } } }' POST
 ```
 
 ## List teams
 ```bash
-bash scripts/call.sh linear 'query { teams { nodes { id name key } } }' POST
+blink connector exec linear 'query { teams { nodes { id name key } } }' POST
 ```
 
 ## Get my assigned issues
 ```bash
-bash scripts/call.sh linear 'query { viewer { assignedIssues(first: 20) { nodes { id title state { name } priority } } } }' POST
+blink connector exec linear 'query { viewer { assignedIssues(first: 20) { nodes { id title state { name } priority } } } }' POST
 ```
 
 ## Common use cases

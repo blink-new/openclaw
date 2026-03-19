@@ -14,37 +14,37 @@ Access the user's linked Twitter/X account. Provider key: `twitter`.
 
 ## Get my profile
 ```bash
-bash scripts/call.sh /users/me GET '{"user.fields":"public_metrics,description"}'
+blink connector exec twitter /users/me GET '{"user.fields":"public_metrics,description"}'
 ```
 
 ## Post a tweet
 ```bash
-bash scripts/call.sh /tweets POST '{"text":"Hello world!"}'
+blink connector exec twitter /tweets POST '{"text":"Hello world!"}'
 ```
 
 ## Reply to a tweet
 ```bash
-bash scripts/call.sh /tweets POST '{"text":"Great point!","reply":{"in_reply_to_tweet_id":"{tweet_id}"}}'
+blink connector exec twitter /tweets POST '{"text":"Great point!","reply":{"in_reply_to_tweet_id":"{tweet_id}"}}'
 ```
 
 ## Get home timeline
 ```bash
-bash scripts/call.sh /users/{id}/timelines/reverse_chronological GET '{"max_results":20}'
+blink connector exec twitter /users/{id}/timelines/reverse_chronological GET '{"max_results":20}'
 ```
 
 ## Search recent tweets
 ```bash
-bash scripts/call.sh /tweets/search/recent GET '{"query":"blink.new","max_results":10}'
+blink connector exec twitter /tweets/search/recent GET '{"query":"blink.new","max_results":10}'
 ```
 
 ## Get tweet details
 ```bash
-bash scripts/call.sh /tweets/{id} GET '{"tweet.fields":"public_metrics,created_at"}'
+blink connector exec twitter /tweets/{id} GET '{"tweet.fields":"public_metrics,created_at"}'
 ```
 
 ## Get my followers
 ```bash
-bash scripts/call.sh /users/{id}/followers GET '{"max_results":50}'
+blink connector exec twitter /users/{id}/followers GET '{"max_results":50}'
 ```
 
 ## Common use cases

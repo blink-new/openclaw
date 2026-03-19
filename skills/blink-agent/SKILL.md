@@ -11,35 +11,35 @@ metadata:
 
 # Blink Agent Management
 
-List and manage Claw agents in the workspace. Zero configuration — `BLINK_AGENT_ID`
-is already injected in every Claw machine.
+List and manage Claw agents in the workspace using `blink agent`. Zero configuration —
+`BLINK_AGENT_ID` is already injected in every Claw machine.
 
 ## List all agents in the workspace
 ```bash
-bash scripts/list.sh
+blink agent list
 ```
 Output: table of agent IDs, names, statuses, sizes, and models.
 
 ## Check your own status
 ```bash
-bash scripts/status.sh
+blink agent status
 ```
 
 ## Check another agent's status
 ```bash
-bash scripts/status.sh clw_a1b2c3d4
+blink agent status --agent clw_a1b2c3d4
 ```
 
 ## Set active agent for a session
 ```bash
-eval $(bash scripts/use.sh clw_a1b2c3d4)
+eval $(blink agent use clw_a1b2c3d4 --export)
 # Now blink secrets commands target that agent
 ```
 
 ## Agent manager pattern — bootstrap another agent
 ```bash
 # 1. List agents to find the worker agent IDs
-bash scripts/list.sh
+blink agent list
 
 # 2. Set credentials on the worker agent
 blink secrets set --agent clw_worker GITHUB_TOKEN ghp_xxx
@@ -49,14 +49,17 @@ blink secrets set --agent clw_worker DATABASE_URL postgres://...
 blink secrets list --agent clw_worker
 ```
 
-## Script signatures
-```
-list.sh
-status.sh [agent_id]
-use.sh <agent_id>    — outputs shell export; use with eval
+## Machine-readable output
+```bash
+blink agent list --json
+blink agent status --json
 ```
 
-## Tips
-- `bash scripts/list.sh --json` returns machine-readable JSON
-- An agent can manage its own secrets directly with `blink-secrets` skill
+## Command signatures
+```
+blink agent list [--json]
+blink agent status [--agent <agent_id>] [--json]
+blink agent use <agent_id> [--export]     — use with eval to set active agent
+```
 - All commands use `BLINK_API_KEY` (workspace key) — no extra setup needed
+- An agent can manage its own secrets directly with the `blink-secrets` skill

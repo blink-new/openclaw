@@ -14,12 +14,12 @@ Access the user's linked Zoom account. Provider key: `zoom`.
 
 ## List upcoming meetings
 ```bash
-bash scripts/call.sh /users/me/meetings GET '{"type":"upcoming","page_size":20}'
+blink connector exec zoom /users/me/meetings GET '{"type":"upcoming","page_size":20}'
 ```
 
 ## Create a meeting
 ```bash
-bash scripts/call.sh /users/me/meetings POST '{
+blink connector exec zoom /users/me/meetings POST '{
   "topic": "Team sync",
   "type": 2,
   "start_time": "2024-03-01T10:00:00Z",
@@ -30,32 +30,32 @@ bash scripts/call.sh /users/me/meetings POST '{
 
 ## Get meeting details
 ```bash
-bash scripts/call.sh /meetings/{meetingId} GET
+blink connector exec zoom /meetings/{meetingId} GET
 ```
 
 ## Delete a meeting
 ```bash
-bash scripts/call.sh /meetings/{meetingId} DELETE
+blink connector exec zoom /meetings/{meetingId} DELETE
 ```
 
 ## List cloud recordings
 ```bash
-bash scripts/call.sh /users/me/recordings GET '{"page_size":10}'
+blink connector exec zoom /users/me/recordings GET '{"page_size":10}'
 ```
 
 ## Get recording for a meeting
 ```bash
-bash scripts/call.sh /meetings/{meetingId}/recordings GET
+blink connector exec zoom /meetings/{meetingId}/recordings GET
 ```
 
 ## List webinars
 ```bash
-bash scripts/call.sh /users/me/webinars GET '{"page_size":10}'
+blink connector exec zoom /users/me/webinars GET '{"page_size":10}'
 ```
 
 ## Get meeting participants
 ```bash
-bash scripts/call.sh /past_meetings/{meetingId}/participants GET
+blink connector exec zoom /past_meetings/{meetingId}/participants GET
 ```
 
 ## Common use cases

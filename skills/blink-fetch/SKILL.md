@@ -11,39 +11,39 @@ metadata:
 
 # Blink Fetch
 
-Make HTTP requests to any URL via the Blink proxy. Supports all HTTP methods,
-custom headers, and JSON bodies. No project key needed — uses your workspace key.
+Make HTTP requests to any URL via the Blink proxy using `blink fetch`.
+No project key needed — uses your workspace key.
 
 ## GET request
 ```bash
-bash scripts/fetch.sh "https://api.github.com/users/octocat"
+blink fetch "https://api.github.com/users/octocat"
 ```
 
 ## POST request with JSON body
 ```bash
-bash scripts/fetch.sh "https://api.example.com/data" POST '{"name":"Alice","email":"alice@example.com"}'
+blink fetch "https://api.example.com/data" --method POST --body '{"name":"Alice","email":"alice@example.com"}'
 ```
 
-## Request with custom headers
+## Request with custom header
 ```bash
-bash scripts/fetch.sh "https://api.example.com/protected" GET '{}' "Authorization: Bearer sk-xxx"
+blink fetch "https://api.example.com/protected" --header "Authorization: Bearer sk-xxx"
 ```
 
 ## GET a webpage
 ```bash
-bash scripts/fetch.sh "https://news.ycombinator.com"
+blink fetch "https://news.ycombinator.com"
 ```
 
-## Scripting — get JSON response
+## Scripting — extract from JSON response
 ```bash
-bash scripts/fetch.sh "https://api.github.com/repos/openclaw/openclaw" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['stargazers_count'])"
+blink fetch "https://api.github.com/repos/openclaw/openclaw" --json | python3 -c "import json,sys; print(json.load(sys.stdin)['stargazers_count'])"
 ```
 
-## Script signatures
+## Command signature
 ```
-fetch.sh <url> [METHOD] [json_body] [header_key_value]
+blink fetch <url> [--method GET|POST|PUT|PATCH|DELETE] [--body '<json>'] [--header 'Key: Value']
 ```
 - `url` — the URL to fetch (required)
-- `METHOD` — GET (default), POST, PUT, PATCH, DELETE
-- `json_body` — JSON string for POST/PUT/PATCH requests (default: none)
-- `header_key_value` — single extra header as "Key: Value" (default: none)
+- `--method` — HTTP method (default: GET)
+- `--body` — JSON body for POST/PUT/PATCH requests
+- `--header` — extra header as "Key: Value" (repeatable)

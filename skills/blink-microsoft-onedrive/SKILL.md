@@ -14,23 +14,23 @@ Access and manage OneDrive files via Microsoft Graph API. Provider key: `microso
 
 ## List root files
 ```bash
-bash scripts/call.sh /me/drive/root/children GET \
+blink connector exec microsoft_onedrive /me/drive/root/children GET \
   '{"$select":"name,id,size,lastModifiedDateTime,webUrl","$top":"30"}'
 ```
 
 ## Search files
 ```bash
-bash scripts/call.sh "/me/drive/root/search(q='report')" GET
+blink connector exec microsoft_onedrive "/me/drive/root/search(q='report')" GET
 ```
 
 ## Get file details
 ```bash
-bash scripts/call.sh /me/drive/items/{itemId} GET
+blink connector exec microsoft_onedrive /me/drive/items/{itemId} GET
 ```
 
 ## Create folder
 ```bash
-bash scripts/call.sh /me/drive/root/children POST '{
+blink connector exec microsoft_onedrive /me/drive/root/children POST '{
   "name": "New Folder",
   "folder": {},
   "@microsoft.graph.conflictBehavior": "rename"
@@ -39,18 +39,18 @@ bash scripts/call.sh /me/drive/root/children POST '{
 
 ## Get sharing link
 ```bash
-bash scripts/call.sh /me/drive/items/{itemId}/createLink POST \
+blink connector exec microsoft_onedrive /me/drive/items/{itemId}/createLink POST \
   '{"type":"view","scope":"anonymous"}'
 ```
 
 ## List folder contents
 ```bash
-bash scripts/call.sh /me/drive/items/{folderId}/children GET
+blink connector exec microsoft_onedrive /me/drive/items/{folderId}/children GET
 ```
 
 ## Delete item
 ```bash
-bash scripts/call.sh /me/drive/items/{itemId} DELETE
+blink connector exec microsoft_onedrive /me/drive/items/{itemId} DELETE
 ```
 
 ## Common use cases

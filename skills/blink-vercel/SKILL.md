@@ -14,42 +14,42 @@ Access the user's linked Vercel account. Provider key: `vercel`.
 
 ## List projects
 ```bash
-bash scripts/call.sh /v9/projects GET '{"limit":20}'
+blink connector exec vercel /v9/projects GET '{"limit":20}'
 ```
 
 ## Get a project
 ```bash
-bash scripts/call.sh /v9/projects/{projectId} GET
+blink connector exec vercel /v9/projects/{projectId} GET
 ```
 
 ## List deployments
 ```bash
-bash scripts/call.sh /v6/deployments GET '{"limit":10}'
+blink connector exec vercel /v6/deployments GET '{"limit":10}'
 ```
 
 ## Get a specific deployment
 ```bash
-bash scripts/call.sh /v13/deployments/{id} GET
+blink connector exec vercel /v13/deployments/{id} GET
 ```
 
 ## Get deployment logs
 ```bash
-bash scripts/call.sh /v2/deployments/{id}/events GET
+blink connector exec vercel /v2/deployments/{id}/events GET
 ```
 
 ## List domains
 ```bash
-bash scripts/call.sh /v5/domains GET
+blink connector exec vercel /v5/domains GET
 ```
 
 ## Get project domains
 ```bash
-bash scripts/call.sh /v9/projects/{projectId}/domains GET
+blink connector exec vercel /v9/projects/{projectId}/domains GET
 ```
 
 ## Get environment variables for a project
 ```bash
-bash scripts/call.sh /v9/projects/{projectId}/env GET
+blink connector exec vercel /v9/projects/{projectId}/env GET
 ```
 
 ## Common use cases
