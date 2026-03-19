@@ -19,7 +19,10 @@ questions, follow a script, collect information, and respond naturally.
 
 ## Make a call (waits for completion, prints transcript)
 ```bash
-blink ai call "+14155551234" "You are collecting a $240 payment from John Smith for invoice #1042. Be polite but firm. Offer a payment plan if needed."
+# --first-message is what the AI says when the call connects (REQUIRED for AI to speak first)
+blink ai call "+14155551234" \
+  "You are collecting a $240 payment from John Smith for invoice #1042. Be polite but firm." \
+  --first-message "Hi, is this John Smith? I'm calling from Acme Corp about invoice 1042."
 ```
 
 ## Call from a specific number (when workspace has multiple)
@@ -81,6 +84,7 @@ Always use E.164 format:
 ## Command signatures
 ```
 blink ai call <phone-number> <system-prompt> [options]
+  --first-message <text>    What AI says first when call connects (CRITICAL for outbound calls)
   --voice <voice>           Voice to use (default: openai:alloy)
   --max-duration <seconds>  Max call duration (default: 300)
   --no-wait                 Return immediately without waiting for completion
