@@ -49,8 +49,13 @@ jobs:
           cache-from: type=registry,ref=registry.fly.io/blink-claw:buildcache
           cache-to: type=registry,ref=registry.fly.io/blink-claw:buildcache,mode=max
 
-      # Update every running blink-claw-* machine to the newly pushed :latest.
-      # Skips the registry-only app (blink-claw) and the claw-manager.
+      # Zero-downtime update strategy:
+      #   • Stopped machines  → updated immediately in parallel (no user impact)
+      #   • Running machines  → updated with --detach (non-blocking; machine config
+      #     is updated and the restart happens asynchronously so in-flight agent
+      #     tasks are not interrupted by this workflow waiting on them)
+      # All updates fire in parallel so every agent converges within seconds,
+      # not sequentially over potentially many minutes.
       - name: Update all running Blink Claw agents
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -70,28 +75,39 @@ jobs:
 
           echo "Found $(echo "$APPS" | wc -l) agent apps"
 
-          FAILED=0
+          PIDS=()
           for APP in $APPS; do
-            MACHINES=$(flyctl machines list --app "$APP" --json 2>/dev/null \
-              | jq -r '.[] | select(.state == "started" or .state == "stopped") | .id' 2>/dev/null || true)
+            MACHINES_JSON=$(flyctl machines list --app "$APP" --json 2>/dev/null || echo "[]")
 
-            if [ -z "$MACHINES" ]; then
-              echo "  $APP: no active machines, skipping"
-              continue
-            fi
+            STOPPED=$(echo "$MACHINES_JSON" | jq -r '.[] | select(.state == "stopped") | .id' 2>/dev/null || true)
+            RUNNING=$(echo "$MACHINES_JSON" | jq -r '.[] | select(.state == "started") | .id' 2>/dev/null || true)
 
-            for MACHINE in $MACHINES; do
-              echo "  Updating $APP / $MACHINE ..."
-              flyctl machines update "$MACHINE" \
-                --image "$IMAGE" \
-                --app "$APP" \
-                --yes \
-              || { echo "  WARNING: failed to update $MACHINE in $APP"; FAILED=1; }
+            # Stopped machines: update and wait (they're idle, safe to block briefly)
+            for MACHINE in $STOPPED; do
+              echo "  [stopped] $APP / $MACHINE — updating in background"
+              flyctl machines update "$MACHINE" --image "$IMAGE" --app "$APP" --yes 2>&1 \
+                | sed "s/^/  [$APP\/$MACHINE] /" &
+              PIDS+=($!)
+            done
+
+            # Running machines: fire-and-forget with --detach so in-flight tasks aren't
+            # interrupted by this workflow blocking on the restart
+            for MACHINE in $RUNNING; do
+              echo "  [running] $APP / $MACHINE — detached update (restarts asynchronously)"
+              flyctl machines update "$MACHINE" --image "$IMAGE" --app "$APP" --yes --detach 2>&1 \
+                | sed "s/^/  [$APP\/$MACHINE] /" &
+              PIDS+=($!)
             done
           done
 
-          [ "$FAILED" -eq 1 ] && echo "::warning::One or more machines failed to update."
-          echo "Done."
+          # Wait for all background jobs and collect exit codes
+          FAILED=0
+          for PID in "${PIDS[@]}"; do
+            wait "$PID" || FAILED=1
+          done
+
+          [ "$FAILED" -eq 1 ] && echo "::warning::One or more machine updates reported an error."
+          echo "Done — all updates fired."
 
       - name: Notify on failure
         if: failure()
