@@ -1,7 +1,7 @@
 ---
 name: blink-phone
 description: >
-  Manage workspace phone numbers for AI calling. Buy dedicated phone numbers,
+  Manage workspace phone numbers for AI calling. Buy dedicated US phone numbers,
   list existing numbers, update labels, and release numbers. Each number costs
   25 credits/month and is billed independently. Use before making AI calls to
   ensure a number is provisioned. The oldest active number is used by default
@@ -13,6 +13,8 @@ metadata:
 # Blink Phone
 
 Manage workspace phone numbers for AI calling via `blink phone`.
+Numbers are US phone numbers provisioned through Vapi. You can still CALL international
+numbers — the FROM number is US but the destination can be any country.
 
 ## List all workspace phone numbers
 ```bash
@@ -26,15 +28,10 @@ Output shows: number, label, status (● active / ⚡ grace), ★ primary badge,
 # Any available US number
 blink phone buy --label "Sales"
 
-# Specific area code (preferred — Vapi picks closest available)
+# Specific area code (Vapi picks the best available in that area)
 blink phone buy --label "Primary" --area-code 914
 blink phone buy --label "Support" --area-code 826
 blink phone buy --label "Outreach" --area-code 775
-
-# International
-blink phone buy --label "UK Line" --country GB
-blink phone buy --label "Canada" --country CA
-blink phone buy --label "Australia" --country AU
 
 # Get JSON (useful for scripting)
 NUMBER=$(blink phone buy --label "Bot" --area-code 914 --json | python3 -c "import json,sys; print(json.loads(sys.stdin.read())['phone_number'])")
@@ -70,7 +67,7 @@ fi
 # 3. Get the primary number
 FROM=$(blink phone list --json | python3 -c "import json,sys; print(json.loads(sys.stdin.read())[0]['phone_number'])")
 
-# 4. Make a call from that number
+# 4. Make a call from that number (destination can be any country)
 blink ai call "+14155551234" "Your task here." --from "$FROM"
 ```
 
@@ -78,17 +75,17 @@ blink ai call "+14155551234" "Your task here." --from "$FROM"
 ```
 blink phone                          # Alias for list
 blink phone list [--json]
-blink phone buy [--label <name>] [--country US|GB|CA|AU] [--area-code <3digits>] [--json]
+blink phone buy [--label <name>] [--area-code <3digits>] [--json]
 blink phone label <id> <label>
 blink phone release <id> [--yes] [--json]
 ```
 
 ## Available area codes (US)
-Vapi suggests: `914` (NY), `826` (CA), `775` (NV) — others may be available.
-If an area code is unavailable, Vapi returns the error: "This area code is not available. Hint: Try one of 914, 826, 775."
+Vapi suggests: `914` (NY), `826` (CA area), `775` (NV) — others may be available.
+If an area code is unavailable, Vapi returns: "This area code is not available. Hint: Try one of 914, 826, 775."
 
 ## Billing
 - 25 credits charged immediately on buy (first month)
 - 25 credits charged monthly on anniversary date
 - Numbers in grace period (payment failed) pause calls for 7 days then are released
-- 1 credit = $0.25 · 25 credits/month = $2.50/month per number
+- 1 credit = $0.25 · 25 credits/month = $6.25/month per number
