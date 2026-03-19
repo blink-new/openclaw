@@ -1,41 +1,39 @@
 ---
 name: blink-linkedin
 description: >
-  Access LinkedIn profile, publish posts, and manage professional content.
-  Use when asked to post on LinkedIn, check profile details, or share
-  professional updates. Requires a linked LinkedIn connection.
+  Publish LinkedIn posts, delete posts, and view profile information.
+  Use when asked to post on LinkedIn, share professional updates, or
+  check profile details. Requires a linked LinkedIn connection.
 metadata:
   { "blink": { "requires_env": ["BLINK_API_KEY", "BLINK_AGENT_ID"], "connector": "linkedin" } }
 ---
 
 # Blink LinkedIn
 
-Access the user's LinkedIn account. Provider key: `linkedin`.
+Manage the user's LinkedIn presence using the `blink linkedin` CLI.
 
-## What works today (w_member_social scope)
+## What works today
 
-| Feature | Status |
-|---|---|
-| Get profile | ✅ works |
-| Create text post | ✅ works |
-| Create post with image | ✅ works |
-| Create post with video | ✅ works |
-| Delete own post | ✅ works |
-| List own posts | ❌ needs r_member_social (restricted scope, pending LinkedIn approval) |
-| Read comments | ❌ needs LinkedIn Partner API |
-| Add comment | ❌ needs LinkedIn Partner API |
-| Like / unlike a post | ❌ needs LinkedIn Partner API |
-
-**Use the `blink linkedin` CLI commands** for the clearest interface:
+| Feature | Command | Status |
+|---|---|---|
+| View profile | `blink linkedin me` | ✅ |
+| Publish text post | `blink linkedin post "..."` | ✅ |
+| Post with image | `blink linkedin post` + upload script | ✅ |
+| Post with video | `blink linkedin post` + upload script | ✅ |
+| Delete own post | `blink linkedin delete <urn>` | ✅ |
+| Read own posts | — | ❌ needs r_member_social (LinkedIn restricted scope) |
+| Read/add comments | — | ❌ needs LinkedIn Partner API |
+| Like / unlike | — | ❌ needs LinkedIn Partner API |
 
 ---
 
-## Get your profile
+## Get profile
 
 ```bash
 blink linkedin me
-# Or with --json for scripting:
-blink linkedin me --json
+
+# For scripting — get person ID:
+PERSON_ID=$(blink linkedin me --json | python3 -c "import json,sys; print(json.load(sys.stdin)['sub'])")
 ```
 
 ---
@@ -43,10 +41,13 @@ blink linkedin me --json
 ## Publish a text post
 
 ```bash
-blink linkedin post "Excited to share our latest update! #Innovation #AI"
+blink linkedin post "Excited to share our latest update! #Innovation"
 
-# Connections-only visibility:
-blink linkedin post "Internal team update" --visibility CONNECTIONS
+# Connections-only:
+blink linkedin post "Internal update" --visibility CONNECTIONS
+
+# Capture the post URN for later (e.g. to delete it):
+POST_URN=$(blink linkedin post "Hello LinkedIn" --json | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 ```
 
 ---
@@ -54,15 +55,14 @@ blink linkedin post "Internal team update" --visibility CONNECTIONS
 ## Post with an image
 
 ```bash
-# Step 1: Upload image, get asset URN
-UPLOAD=$(bash scripts/upload-image.sh "https://example.com/photo.jpg")
-ASSET_URN=$(echo "$UPLOAD" | python3 -c "import json,sys; print(json.loads(sys.stdin.read())['data']['asset_urn'])")
+# Step 1: Upload image to LinkedIn, get asset URN
+ASSET_URN=$(bash scripts/upload-image.sh "https://example.com/photo.jpg" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['asset_urn'])")
 
 # Step 2: Get your person ID
 PERSON_ID=$(blink linkedin me --json | python3 -c "import json,sys; print(json.load(sys.stdin)['sub'])")
 
-# Step 3: Post with image
-bash scripts/call.sh /ugcPosts POST "{
+# Step 3: Post using blink connector exec (raw ugcPosts with media)
+blink connector exec linkedin ugcPosts --method POST --params "{
   \"author\": \"urn:li:person:$PERSON_ID\",
   \"lifecycleState\": \"PUBLISHED\",
   \"specificContent\": {
@@ -76,26 +76,9 @@ bash scripts/call.sh /ugcPosts POST "{
 }"
 ```
 
-Or use the convenience script (one command):
+Or use the convenience script:
 ```bash
 bash scripts/post-with-image.sh "Check out this image!" "https://example.com/photo.jpg"
-```
-
----
-
-## Post a LOCAL photo to LinkedIn (user uploaded via Telegram/Discord/Slack)
-
-```bash
-# Step 1: Upload local file to get a URL (requires blink-image skill)
-UPLOAD=$(bash /path/to/blink-image/scripts/upload-file.sh "/data/agents/default/agent/photo.jpg")
-URL=$(echo "$UPLOAD" | python3 -c "import json,sys; print(json.loads(sys.stdin.read())['url'])")
-
-# Optional Step 2: Edit the photo (e.g. make it a professional headshot)
-EDITED=$(bash /path/to/blink-image/scripts/edit.sh "Professional studio headshot, dark background, clean look" "$URL")
-FINAL_URL=$(echo "$EDITED" | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); print(d['result']['data'][0]['url'])")
-
-# Step 3: Post to LinkedIn
-bash scripts/post-with-image.sh "Excited to share my new professional photo!" "$FINAL_URL"
 ```
 
 ---
@@ -103,43 +86,41 @@ bash scripts/post-with-image.sh "Excited to share my new professional photo!" "$
 ## Post with a video
 
 ```bash
-# Upload video then post
 bash scripts/post-with-video.sh "Watch our latest demo!" "https://example.com/demo.mp4"
 ```
 
 ---
 
-## Delete your own post
+## Delete a post
 
 ```bash
-POST_URN="urn:li:ugcPost:1234567890"
-ENCODED=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$POST_URN', safe=''))")
-bash scripts/call.sh "/ugcPosts/$ENCODED" DELETE
+blink linkedin delete "urn:li:ugcPost:1234567890"
 ```
+
+The post URN is returned when you create a post via `blink linkedin post --json`.
 
 ---
 
 ## Media upload notes
 
-- Image formats: JPEG, PNG, GIF (max 5MB for optimal results)
-- Video formats: MP4 (max 200MB, H.264 encoded)
-- `w_member_social` scope (already included) covers image and video posts
+- Image formats: JPEG, PNG, GIF (max 5MB)
+- Video formats: MP4 (max 200MB, H.264)
 - Videos may take a few seconds to process before the post appears
 
 ---
 
 ## Key notes on URNs
 
-- Post URN: `urn:li:ugcPost:1234567890` — returned when you create a post
+- Post URN is returned by `blink linkedin post --json` as the `id` field
 - URNs must be URL-encoded in path segments: `urn:li:ugcPost:123` → `urn%3Ali%3AugcPost%3A123`
-- Get your person ID from `blink linkedin me --json | jq .sub`
+- Person ID is available from `blink linkedin me --json` as the `sub` field
 
 ---
 
 ## Common use cases
 
-- "Post an update on LinkedIn about our product launch" → `blink linkedin post "..."`
-- "What's my LinkedIn profile info?" → `blink linkedin me`
-- "Share our latest blog post on LinkedIn" → `blink linkedin post "..."` 
-- "Post this image to LinkedIn" → use `scripts/post-with-image.sh`
-- "Delete my last LinkedIn post" → `bash scripts/call.sh "/ugcPosts/ENCODED_URN" DELETE`
+- "Post an update on LinkedIn" → `blink linkedin post "..."`
+- "What's my LinkedIn profile?" → `blink linkedin me`
+- "Share this image on LinkedIn" → `bash scripts/post-with-image.sh "..." "<url>"`
+- "Delete my LinkedIn post" → `blink linkedin delete "<urn>"`
+- "Post this video" → `bash scripts/post-with-video.sh "..." "<url>"`
