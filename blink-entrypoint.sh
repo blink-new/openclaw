@@ -7,7 +7,7 @@ if [ "$(stat -c %U /data 2>/dev/null)" != "node" ]; then
   mkdir -p /data/workspace /data/agents/main/agent /data/agents/main/sessions \
            /data/scripts /data/npm-global
   [ ! -f /data/openclaw.json ] && \
-    echo '{"agents":{"defaults":{"workspace":"/data/workspace"}},"gateway":{"auth":{"mode":"token"}}}' > /data/openclaw.json
+    echo '{"agents":{"defaults":{"workspace":"/data/workspace"}},"browser":{"noSandbox":true},"gateway":{"auth":{"mode":"token"}}}' > /data/openclaw.json
   chown -R node:node /data
 fi
 
