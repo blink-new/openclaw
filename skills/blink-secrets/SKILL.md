@@ -51,4 +51,4 @@ blink secrets set <key> <value> [--agent <agent_id>]
 blink secrets delete <key> [--agent <agent_id>]
 ```
 All secrets are stored encrypted (AES-256-GCM) and never returned in plaintext via the API.
-After setting, the secret is immediately available as `$KEY_NAME` in all shell commands.
+After setting, the secret is immediately available as `$KEY_NAME` in all shell commands — no restart required.

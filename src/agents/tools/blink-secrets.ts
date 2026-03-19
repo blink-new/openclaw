@@ -40,7 +40,7 @@ export function createBlinkSecretsTool(): AnyAgentTool | null {
       "(the value is encrypted and never returned after saving). " +
       "Use 'get_names' to list all stored key names. " +
       "Use 'delete' to remove a secret. " +
-      "After saving with 'set', the gateway restarts (~5-10s fast path via process kill, ~30s if fallback) and the value becomes available as $KEY_NAME in shell commands.",
+      "After saving with 'set', the value is immediately available as $KEY_NAME in all shell commands — no restart needed.",
     parameters: BlinkSecretsSchema,
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
@@ -67,10 +67,14 @@ export function createBlinkSecretsTool(): AnyAgentTool | null {
           body: JSON.stringify({ key, value }),
         });
         if (!res.ok) throw new Error(`Failed to save secret: HTTP ${res.status}`);
+        // Inject immediately into current process so $KEY_NAME works in shell commands
+        // without needing a restart. The API also writes to /data/.env for persistence
+        // across future restarts.
+        process.env[key] = value;
         return jsonResult({
           ok: true,
           key,
-          message: `Secret ${key} saved. Gateway restarting to apply (~5-10s). After restart, use $${key} in shell commands.`,
+          message: `Secret ${key} saved and immediately available as $${key} in shell commands.`,
         });
       }
 
@@ -80,6 +84,8 @@ export function createBlinkSecretsTool(): AnyAgentTool | null {
           headers,
         });
         if (!res.ok) throw new Error(`Failed to delete secret: HTTP ${res.status}`);
+        // Remove from current process env immediately
+        delete process.env[key];
         return jsonResult({ ok: true, key, message: `Secret ${key} deleted.` });
       }
 
