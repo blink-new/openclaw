@@ -40,20 +40,17 @@ blink db query $BLINK_PROJECT_ID "INSERT INTO tasks (id, title, done) VALUES ('t
 
 ### Execute a SQL file
 ```bash
-eval $(blink use $BLINK_PROJECT_ID --export)
-blink db exec schema.sql
+blink db exec $BLINK_PROJECT_ID schema.sql
 ```
 
 ### List all tables
 ```bash
-eval $(blink use $BLINK_PROJECT_ID --export)
-blink db list
+blink db list $BLINK_PROJECT_ID
 ```
 
 ### Show rows in a table
 ```bash
-eval $(blink use $BLINK_PROJECT_ID --export)
-blink db list users
+blink db list $BLINK_PROJECT_ID users
 ```
 
 ---
@@ -81,16 +78,22 @@ blink storage url $BLINK_PROJECT_ID images/logo.png
 blink storage download $BLINK_PROJECT_ID reports/2024/report.pdf ./local-report.pdf
 ```
 
+### Delete a file
+```bash
+blink storage delete $BLINK_PROJECT_ID old-file.pdf
+```
+
 ---
 
 ## Command signatures
 ```
 blink db query <project_id> <sql>
-blink db exec <file.sql>             # requires: eval $(blink use $BLINK_PROJECT_ID --export)
-blink db list [table]                # requires: eval $(blink use $BLINK_PROJECT_ID --export)
+blink db exec <project_id> <file.sql>
+blink db list <project_id> [table]
 blink storage upload <project_id> <local_file> [--path <storage_path>]
 blink storage list <project_id> [prefix]
 blink storage url <project_id> <storage_path>
 blink storage download <project_id> <storage_path> [output_file]
+blink storage delete <project_id> <storage_path>
 ```
 All commands use `$BLINK_PROJECT_ID` from the agent secrets vault.
