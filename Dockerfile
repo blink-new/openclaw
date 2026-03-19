@@ -193,7 +193,7 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
 ARG OPENCLAW_INSTALL_BLINK_TOOLS=""
 RUN if [ -n "$OPENCLAW_INSTALL_BLINK_TOOLS" ]; then \
       npm install -g bun clawhub && \
-      (pip3 install uv nano-pdf 2>/dev/null || pip install uv nano-pdf 2>/dev/null || true); \
+      (pip3 install uv nano-pdf linkedin-api 2>/dev/null || pip install uv nano-pdf linkedin-api 2>/dev/null || true); \
     fi
 
 # Optionally install Chromium and Xvfb for browser automation.
