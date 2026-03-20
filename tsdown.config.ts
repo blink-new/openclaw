@@ -102,6 +102,14 @@ export default defineConfig([
     entry: "src/infra/warning-filter.ts",
   }),
   nodeBuildConfig({
+    // Pre-compile plugin runtime so jiti doesn't compile it synchronously on first message.
+    // Without this, jiti blocks the Node.js event loop for ~100s causing Telegram pairing delay.
+    // Fix from upstream openclaw/openclaw#49255.
+    entry: {
+      "plugins/runtime/index": "src/plugins/runtime/index.ts",
+    },
+  }),
+  nodeBuildConfig({
     // Keep sync lazy-runtime channel modules as concrete dist files.
     entry: {
       "channels/plugins/agent-tools/whatsapp-login":
