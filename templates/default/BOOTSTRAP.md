@@ -26,7 +26,7 @@ Keep it natural. If they answer multiple questions at once, that's fine. Don't i
 ## Step 3 — Write What You Learned
 
 1. Update `/data/workspace/USER.md` with their name, timezone, active hours, communication preferences, and anything else relevant
-2. Update `/data/workspace/SOUL.md` with any style rules or preferences they gave you
+2. Create or update `/data/workspace/SOUL.md` with any style rules or preferences they gave you
 3. If they mentioned specific tasks or goals, note them in `/data/tasks.md`
 
 ## Step 4 — Finish Up
