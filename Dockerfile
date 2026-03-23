@@ -276,12 +276,8 @@ ENV PATH="/data/npm-global/bin:${PATH}"
 # Pre-warm Jiti cache: boot the gateway once with WhatsApp enabled so Jiti
 # compiles all TypeScript extensions during Docker build (not at runtime).
 # Without this, WhatsApp/Baileys Jiti compilation takes 90-300s on shared CPUs.
-#
-# JITI_CACHE must point to a path INSIDE /app so it persists in the image layer.
-# Jiti's default fsCache writes to node_modules/.cache/jiti/ OR /tmp/node-jiti
-# (both lost between RUN layers or at runtime). Explicit path ensures persistence.
-ENV JITI_CACHE=/app/.jiti-cache
-RUN mkdir -p /tmp/oc-warmup/workspace/.whatsapp /tmp/oc-warmup/agents/main/agent "$JITI_CACHE" && \
+# The compiled cache at node_modules/.cache/jiti/ bakes into the image layer.
+RUN mkdir -p /tmp/oc-warmup/workspace/.whatsapp /tmp/oc-warmup/agents/main/agent && \
     printf '%s' '{"agents":{"defaults":{"workspace":"/tmp/oc-warmup/workspace"}},"gateway":{"auth":{"mode":"token"}},"browser":{"noSandbox":true},"channels":{"whatsapp":{"accounts":{"default":{"authDir":"/tmp/oc-warmup/workspace/.whatsapp"}}}}}' \
       > /tmp/oc-warmup/openclaw.json && \
     OPENCLAW_STATE_DIR=/tmp/oc-warmup \
@@ -295,9 +291,8 @@ RUN mkdir -p /tmp/oc-warmup/workspace/.whatsapp /tmp/oc-warmup/agents/main/agent
     done && \
     kill $GW_PID 2>/dev/null; wait $GW_PID 2>/dev/null || true && \
     rm -rf /tmp/oc-warmup && \
-    CACHE_COUNT=$(find "$JITI_CACHE" -type f 2>/dev/null | wc -l) && \
-    chown -R node:node "$JITI_CACHE" && \
-    echo "Jiti cache warmed: $CACHE_COUNT compiled files in $JITI_CACHE"
+    chown -R node:node /app/node_modules/.cache 2>/dev/null || true && \
+    echo "Jiti cache warmed (WhatsApp + all extensions pre-compiled)"
 
 # Blink entrypoint: runs as root to prepare fresh Fly volumes (/data),
 # then drops to node user via gosu before exec'ing the gateway.

@@ -195,29 +195,22 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "MACHINE B: WhatsApp pre-configured (OOM test + QR test)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Start Machine B with default entrypoint (same as Machine A). Once healthy,
-# write WhatsApp config via exec, restart the process, and re-check health.
-# This mirrors exactly how production agents enable WhatsApp.
-echo "==> Creating machine B..."
+# Custom entrypoint: write WhatsApp config, then call the real entrypoint.
+# blink-entrypoint.sh runs as root, preps /data, drops to node, execs CMD.
+# Base64-encode the config to avoid shell quoting issues.
+WA_CONFIG_B64=$(printf '%s' '{"agents":{"defaults":{"workspace":"/data/workspace"}},"gateway":{"auth":{"mode":"token"},"controlUi":{"dangerouslyAllowHostHeaderOriginFallback":true,"dangerouslyDisableDeviceAuth":true}},"browser":{"noSandbox":true},"channels":{"whatsapp":{"accounts":{"default":{"authDir":"/data/workspace/.whatsapp"}}}}}' | base64 | tr -d '\n')
+
+echo "==> Creating machine B (WhatsApp configured from boot)..."
+WA_CMD="mkdir -p /data/workspace/.whatsapp /data/agents/main/agent /data/agents/main/sessions /data/scripts /data/npm-global && printf '%s' '${WA_CONFIG_B64}' | base64 -d > /data/openclaw.json && chown -R node:node /data && exec /app/blink-entrypoint.sh node openclaw.mjs gateway --allow-unconfigured"
 MACHINE_B=$(create_machine \
-  '["/app/blink-entrypoint.sh"]' \
-  '["node", "openclaw.mjs", "gateway", "--allow-unconfigured"]')
+  '[ "/bin/sh", "-c" ]' \
+  "$(python3 -c "import json; print(json.dumps(['''$WA_CMD''']))")")
 echo "    Machine B: $MACHINE_B"
 
 wait_machine_started "$MACHINE_B" "Machine B"
 
-echo "==> Waiting for Machine B baseline health..."
-wait_gateway_healthy "$MACHINE_B" "Machine B" 60
-
-echo "==> Writing WhatsApp config into Machine B + restarting process..."
-WA_CONFIG_B64=$(printf '%s' '{"agents":{"defaults":{"workspace":"/data/workspace"}},"gateway":{"auth":{"mode":"token"},"controlUi":{"dangerouslyAllowHostHeaderOriginFallback":true,"dangerouslyDisableDeviceAuth":true}},"browser":{"noSandbox":true},"channels":{"whatsapp":{"accounts":{"default":{"authDir":"/data/workspace/.whatsapp"}}}}}' | base64 | tr -d '\n')
-fly_exec "$MACHINE_B" \
-  "mkdir -p /data/workspace/.whatsapp && printf '%s' '$WA_CONFIG_B64' | base64 -d > /data/openclaw.json" 30 > /dev/null
-
-# Kill the gateway process — Fly restart:always brings it back with new config
-fly_exec "$MACHINE_B" 'kill $(pgrep -f "openclaw.mjs" | head -1) 2>/dev/null || true' 10 > /dev/null 2>&1 || true
-sleep 5
-
+# With Jiti cache pre-warmed in Docker build, WhatsApp init should be ~10-30s.
+# Without cache, it takes 90-300s on shared CPUs.
 echo "==> Waiting for WhatsApp gateway (should be fast with Jiti cache)..."
 wait_gateway_healthy "$MACHINE_B" "Machine B" 120
 WA_SECS="$_GATEWAY_SECS"
@@ -251,50 +244,48 @@ QR_OUTPUT=$(fly_exec_stdout "$MACHINE_B" \
 echo "    RPC result: $QR_OUTPUT"
 
 # Parse
-# Parse QR result — device-identity auth errors are expected from inside the
-# container (no HTTPS context). Production uses wss:// via Claw Manager relay.
-# "provider is not available" = WhatsApp extension NOT loaded (real failure).
-QR_STATUS=$(echo "$QR_OUTPUT" | python3 -c "
-import json, sys
+HAS_ERROR=$(echo "$QR_OUTPUT" | python3 -c "
+import json,sys
 try:
   d = json.loads(sys.stdin.read() or '{}')
-  if 'error' in d:
-    err = d['error']
-    if 'device identity' in err:
-      print('PASS_AUTH')
-    elif 'provider is not available' in err:
-      print('FAIL_NO_WHATSAPP')
-    else:
-      print('FAIL:' + err)
-  else:
-    print('PASS_QR:' + str(d.get('qrLength', 0)))
-except Exception as e:
-  print('FAIL:' + str(e))
-" 2>/dev/null || echo "FAIL:parse")
+  print('yes' if 'error' in d else 'no')
+except: print('yes')" 2>/dev/null || echo "yes")
 
-if echo "$QR_STATUS" | grep -q "^FAIL"; then
-  QR_ERROR="${QR_STATUS#FAIL:}"
+if [ "$HAS_ERROR" = "yes" ]; then
+  QR_ERROR=$(echo "$QR_OUTPUT" | python3 -c "
+import json,sys
+try: print(json.loads(sys.stdin.read() or '{}').get('error','parse failed'))
+except: print(sys.stdin.read())" 2>/dev/null || echo "parse failed")
   echo ""
   echo "╔══════════════════════════════════════════════════════════╗"
   echo "║  SMOKE TEST FAILED ✗                                    ║"
   echo "╠══════════════════════════════════════════════════════════╣"
-  echo "║  $QR_ERROR"
+  echo "║  WhatsApp QR error: $QR_ERROR"
   echo "╚══════════════════════════════════════════════════════════╝"
+  # Print machine B recent logs for debugging
+  echo ""
+  echo "==> Machine B recent logs:"
   flyctl logs --app "$TEST_APP" --machine "$MACHINE_B" --no-tail 2>&1 | tail -30 || true
   exit 1
 fi
 
-QR_NOTE="QR generated"
-if echo "$QR_STATUS" | grep -q "PASS_AUTH"; then
-  QR_NOTE="gateway up + WhatsApp loaded (QR requires HTTPS — production OK)"
-fi
+QR_LEN=$(echo "$QR_OUTPUT" | python3 -c "
+import json,sys
+try: print(json.loads(sys.stdin.read() or '{}').get('qrLength',0))
+except: print(0)" 2>/dev/null || echo "0")
+
+HAS_QR=$(echo "$QR_OUTPUT" | python3 -c "
+import json,sys
+try: print(json.loads(sys.stdin.read() or '{}').get('hasQrDataUrl',False))
+except: print(False)" 2>/dev/null || echo "False")
 
 # ── Final report ─────────────────────────────────────────────────────────────
 echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║  SMOKE TEST PASSED ✓                                        ║"
 echo "╠══════════════════════════════════════════════════════════════╣"
-echo "║  WhatsApp: $QR_NOTE"
+echo "║  WhatsApp QR generated: $HAS_QR"
+echo "║  QR size: $QR_LEN bytes"
 echo "║  Memory — baseline: $BASELINE_MEM"
 echo "║  Memory — WhatsApp: $WA_MEM"
 echo "║  Startup — baseline: $BASELINE_SECS"
