@@ -1107,18 +1107,19 @@ blink connector exec composio_granola list_meetings POST '{"time_range":"this_we
 # Custom window
 blink connector exec composio_granola list_meetings POST '{"time_range":"custom","custom_start":"2026-04-01","custom_end":"2026-04-30"}'
 
-# Get full notes/summary/attendees for one or more meetings (max 10 ids per call)
-blink connector exec composio_granola get_meetings POST '{"meeting_ids":["uuid-1","uuid-2"]}'
+# Get full notes/summary/attendees for one or more meetings (max 10 ids per call).
+# Substitute real UUIDs from list_meetings — never pass placeholder strings literally.
+blink connector exec composio_granola get_meetings POST '{"meeting_ids":["<MEETING_UUID_A>","<MEETING_UUID_B>"]}'
 
-# Verbatim transcript for a single meeting
-blink connector exec composio_granola get_meeting_transcript POST '{"meeting_id":"uuid"}'
+# Verbatim transcript for a single meeting (paid Granola tier required — see gotcha below)
+blink connector exec composio_granola get_meeting_transcript POST '{"meeting_id":"<MEETING_UUID>"}'
 
 # Natural-language Q&A across the user's meeting corpus. Returns text with
 # numbered citation links you MUST preserve in your reply to the user.
 blink connector exec composio_granola query_granola_meetings POST '{"query":"What follow-ups did we agree on with Acme last week?"}'
 
 # Optionally scope the query to specific meetings
-blink connector exec composio_granola query_granola_meetings POST '{"query":"Action items?","document_ids":["uuid-1"]}'
+blink connector exec composio_granola query_granola_meetings POST '{"query":"Action items?","document_ids":["<MEETING_UUID>"]}'
 ```
 
 **Picking the right tool:**
@@ -1136,6 +1137,13 @@ every tool call comes back as `403` with the message
 `Unauthorized: user has not created a Granola account yet. Sign up at
 https://granola.ai/mcp-signup and then try again.` Show that link to the
 user — there is nothing to fix on Blink's side.
+
+**Granola gotcha — `get_meeting_transcript` is paid-tier only.** Free-tier
+users see a `402` with `Transcripts are only available to paid Granola tiers
+(Upgrade at https://granola.ai/settings, then retry.)`. When you hit that,
+show the upgrade link and fall back to `query_granola_meetings` for the same
+question — it works on free tier and is usually good enough for quote-style
+or summary-style asks.
 
 `tool-execute composio_granola GRANOLA_MCP_*` is **not** supported (Composio's
 generic tool catalog mis-types the upstream MCP output schema). Always use

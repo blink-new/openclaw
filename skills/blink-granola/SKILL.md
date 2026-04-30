@@ -57,8 +57,8 @@ Returns titles + meeting IDs. Use the IDs with `get_meetings` /
 ```bash
 blink connector exec composio_granola query_granola_meetings POST '{"query":"What follow-ups did we agree on with Acme last week?"}'
 
-# Optionally pin the query to specific meetings
-blink connector exec composio_granola query_granola_meetings POST '{"query":"Action items?","document_ids":["uuid-1","uuid-2"]}'
+# Optionally pin the query to specific meetings (substitute real IDs from list_meetings)
+blink connector exec composio_granola query_granola_meetings POST '{"query":"Action items?","document_ids":["<MEETING_UUID_A>","<MEETING_UUID_B>"]}'
 ```
 
 Returns text with numbered citation links like `[[0]](url)`.
@@ -69,17 +69,25 @@ the user verifies the answer.
 
 ```bash
 # Up to 10 meeting IDs per call. Returns private notes, AI summary, attendees, metadata.
-blink connector exec composio_granola get_meetings POST '{"meeting_ids":["uuid-1","uuid-2"]}'
+# Substitute real UUIDs you got from list_meetings — never pass placeholder strings literally.
+blink connector exec composio_granola get_meetings POST '{"meeting_ids":["<MEETING_UUID_A>","<MEETING_UUID_B>"]}'
 ```
 
 ### `get_meeting_transcript` — verbatim transcript for one meeting
 
 ```bash
-blink connector exec composio_granola get_meeting_transcript POST '{"meeting_id":"uuid"}'
+blink connector exec composio_granola get_meeting_transcript POST '{"meeting_id":"<MEETING_UUID>"}'
 ```
 
 Use this only when the user needs exact wording / quotes — for summaries or
 action items, `query_granola_meetings` is faster and cheaper.
+
+> **Paid-tier gate.** Transcripts require a paid Granola subscription. Free-tier
+> users get back a 402 with the message `Transcripts are only available to paid
+> Granola tiers (Upgrade at https://granola.ai/settings, then retry.)`. When you
+> see that, surface the upgrade link and **fall back to `query_granola_meetings`
+> or `get_meetings`** — both work on free tier and answer most quote-style
+> questions well enough.
 
 ## Picking the right tool
 
@@ -107,6 +115,10 @@ and Granola's server-side ranker is better tuned than your own.
 
 - **403 with "has not created a Granola account yet"** → user needs to
   complete <https://granola.ai/mcp-signup>. Show the link, stop.
+- **402 with "Transcripts are only available to paid Granola tiers"** →
+  free-tier user hit `get_meeting_transcript`. Show the upgrade link
+  (<https://granola.ai/settings>) and retry the same question with
+  `query_granola_meetings` (works on free tier).
 - **`tool-execute composio_granola GRANOLA_MCP_*` returns "Unable to retrieve
   tool with slug"** → this path isn't supported (Composio's static catalog
   trips on Granola's MCP-dynamic schema). Always use `exec` with the
