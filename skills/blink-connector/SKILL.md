@@ -1145,9 +1145,10 @@ show the upgrade link and fall back to `query_granola_meetings` for the same
 question — it works on free tier and is usually good enough for quote-style
 or summary-style asks.
 
-`tool-execute composio_granola GRANOLA_MCP_*` is **not** supported (Composio's
-generic tool catalog mis-types the upstream MCP output schema). Always use
-`exec` with the lowercase tool name, as shown above.
+`blink connector tool-execute composio_granola GRANOLA_MCP_*` is **not**
+supported (Composio's generic tool catalog mis-types the upstream MCP output
+schema). Always use `blink connector exec` with the lowercase tool name, as
+shown above.
 
 ## Scripting — capture output
 

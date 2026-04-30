@@ -119,7 +119,7 @@ and Granola's server-side ranker is better tuned than your own.
   free-tier user hit `get_meeting_transcript`. Show the upgrade link
   (<https://granola.ai/settings>) and retry the same question with
   `query_granola_meetings` (works on free tier).
-- **`tool-execute composio_granola GRANOLA_MCP_*` returns "Unable to retrieve
-  tool with slug"** → this path isn't supported (Composio's static catalog
-  trips on Granola's MCP-dynamic schema). Always use `exec` with the
-  lowercase tool name as shown above.
+- **`blink connector tool-execute composio_granola GRANOLA_MCP_*` returns
+  "Unable to retrieve tool with slug"** → this path isn't supported
+  (Composio's static catalog trips on Granola's MCP-dynamic schema). Always
+  use `blink connector exec` with the lowercase tool name as shown above.
