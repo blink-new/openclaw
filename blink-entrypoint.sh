@@ -219,12 +219,17 @@ fi
 # Ensure Chromium is discoverable at /usr/bin/chromium.
 # OpenClaw's Linux resolver only checks /usr/bin/{google-chrome,chromium,...} but
 # Playwright installs to /home/node/.cache/ms-playwright/chromium-*/chrome-linux64/chrome.
-# The Dockerfile bakes this symlink for new images; this covers existing machines.
-if [ ! -x /usr/bin/chromium ]; then
-  CHROME_BIN="$(find /home/node/.cache/ms-playwright -name 'chrome' -path '*/chrome-linux*/chrome' 2>/dev/null | head -1)"
-  if [ -n "${CHROME_BIN}" ] && [ -x "${CHROME_BIN}" ]; then
+# Re-verify on every boot in case a Playwright version bump changed the path.
+CHROME_BIN="$(find /home/node/.cache/ms-playwright -name 'chrome' -path '*/chrome-linux*/chrome' -print -quit 2>/dev/null)"
+if [ -n "${CHROME_BIN}" ] && [ -x "${CHROME_BIN}" ]; then
+  CURRENT_TARGET="$(readlink -f /usr/bin/chromium 2>/dev/null || echo none)"
+  if [ "${CURRENT_TARGET}" != "${CHROME_BIN}" ]; then
     ln -sf "${CHROME_BIN}" /usr/bin/chromium
+    echo "[blink-entrypoint] Symlinked /usr/bin/chromium -> ${CHROME_BIN}"
   fi
+elif [ -d /home/node/.cache/ms-playwright ]; then
+  echo "[blink-entrypoint] WARNING: Playwright cache dir present but no chromium binary found" >&2
+  find /home/node/.cache/ms-playwright -maxdepth 4 -type f -name 'chrome' >&2 || true
 fi
 
 # Never let the gateway daemonize — Fly init supervises this process.

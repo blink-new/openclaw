@@ -258,7 +258,15 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
       PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright \
       node /app/node_modules/playwright-core/cli.js install --with-deps chromium && \
       chown -R node:node /home/node/.cache/ms-playwright && \
-      ln -sf "$(find /home/node/.cache/ms-playwright -name 'chrome' -path '*/chrome-linux*/chrome' | head -1)" /usr/bin/chromium; \
+      CHROME_BIN="$(find /home/node/.cache/ms-playwright -name 'chrome' -path '*/chrome-linux*/chrome' -print -quit)" && \
+      if [ -z "${CHROME_BIN}" ] || [ ! -x "${CHROME_BIN}" ]; then \
+        echo "FATAL: Playwright chromium binary not found after install" >&2; \
+        find /home/node/.cache/ms-playwright -maxdepth 4 -type f -name 'chrome' >&2; \
+        exit 1; \
+      fi && \
+      ln -sf "${CHROME_BIN}" /usr/bin/chromium && \
+      ls -la /usr/bin/chromium && \
+      test -x /usr/bin/chromium; \
     fi
 
 # Optionally install Docker CLI for sandbox container management.
@@ -325,8 +333,11 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 # Install the Blink Claw entrypoint. Runs as root, seeds /data, writes
 # auth-profiles.json (required by v2026.4.15+ auth resolver), then execs
 # the gateway as the `node` user.
+# cache-bust: 2026-04-29-chromium-fix-v2 — registry buildcache was returning
+# stale entrypoint despite content change; verify checksum after copy.
 COPY blink-entrypoint.sh /usr/local/bin/blink-entrypoint.sh
-RUN chmod 755 /usr/local/bin/blink-entrypoint.sh
+RUN chmod 755 /usr/local/bin/blink-entrypoint.sh && \
+    echo "blink-entrypoint.sh sha256: $(sha256sum /usr/local/bin/blink-entrypoint.sh | cut -d' ' -f1) lines: $(wc -l < /usr/local/bin/blink-entrypoint.sh)"
 
 # OPENCLAW_NO_RESPAWN stops the gateway from daemonizing (Fly init supervises
 # the process directly; daemonization leaves Fly with a dead init and the
