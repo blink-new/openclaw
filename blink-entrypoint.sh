@@ -55,6 +55,12 @@ if [ "$(stat -c %U "${STATE_DIR}" 2>/dev/null || echo root)" != "node" ]; then
   chown -R node:node "${STATE_DIR}"
 fi
 
+# Fix ownership of /data/identity/ files if created by root (e.g. flyExec debugging).
+# The gateway runs as node and needs read/write access to device-auth.json.
+if [ -d "${STATE_DIR}/identity" ]; then
+  chown -R node:node "${STATE_DIR}/identity" 2>/dev/null || true
+fi
+
 # Pool mode: overwrite config with skeleton ONLY if not yet adopted.
 # The claim flow writes /data/.adopted after writing the real openclaw.json.
 # Without this guard, every restart clobbers the user's config with the skeleton.
@@ -208,6 +214,17 @@ with open('${CONFIG_FILE}') as f: d = json.load(f)
 if 'secrets' in d: del d['secrets']
 with open('${CONFIG_FILE}', 'w') as f: json.dump(d, f, indent=2)
 " 2>/dev/null
+fi
+
+# Ensure Chromium is discoverable at /usr/bin/chromium.
+# OpenClaw's Linux resolver only checks /usr/bin/{google-chrome,chromium,...} but
+# Playwright installs to /home/node/.cache/ms-playwright/chromium-*/chrome-linux64/chrome.
+# The Dockerfile bakes this symlink for new images; this covers existing machines.
+if [ ! -x /usr/bin/chromium ]; then
+  CHROME_BIN="$(find /home/node/.cache/ms-playwright -name 'chrome' -path '*/chrome-linux*/chrome' 2>/dev/null | head -1)"
+  if [ -n "${CHROME_BIN}" ] && [ -x "${CHROME_BIN}" ]; then
+    ln -sf "${CHROME_BIN}" /usr/bin/chromium
+  fi
 fi
 
 # Never let the gateway daemonize — Fly init supervises this process.
