@@ -14,7 +14,7 @@ description: >
   TikTok, YouTube, Mailchimp, Typeform, Calendly, Etsy, Vercel,
   Reddit, Facebook, Monday, Amplitude, Google Analytics, Zendesk, Apollo,
   Datagma, Mixpanel, PeopleDataLabs, Google BigQuery, Supabase, QuickBooks,
-  Brex, Google Ads, Intercom, Gong, Box, Todoist, Ashby, Basecamp.
+  Brex, Google Ads, Intercom, Gong, Box, Todoist, Ashby, Basecamp, Granola.
   (3) Native Composio tool catalog (file uploads, attachments, complex
   writes): `blink connector tool-execute <composio_provider> <TOOL_SLUG>
   '<json>'` — unlocks 1000+ Composio tools, auto-uploads URL/path file
@@ -117,6 +117,7 @@ A missing provider means it's not linked — ask the user to connect it in the A
 | Todoist | `composio_todoist` | `https://api.todoist.com/api/v1/` |
 | Ashby | `composio_ashby` | `https://api.ashbyhq.com/` |
 | Basecamp | `composio_basecamp` | `https://3.basecampapi.com/` (path: `{accountId}/projects.json`) |
+| Granola | `composio_granola` | MCP server at `https://mcp.granola.ai/mcp` — see Granola section below for the tool-name path style |
 
 ## Examples by Provider
 
@@ -1088,6 +1089,66 @@ blink connector exec composio_basecamp buckets/PROJECT_ID/message_boards/BOARD_I
 If you need to override the account (for users who belong to multiple
 Basecamp accounts), you may still pass the numeric account id explicitly as
 the first path segment, e.g. `6199974/projects.json`.
+
+### Granola
+
+Granola is an MCP server (JSON-RPC over SSE), not a REST API. The Blink
+executor wraps the upstream MCP transport so you call it the same way as any
+other connector: pass the MCP **tool name** as the path, POST, body is the
+tool arguments. The executor builds the JSON-RPC `tools/call` envelope, parses
+the SSE response, and returns the inner JSON.
+
+The 4 available tools:
+
+```bash
+# List meetings in a fixed window. time_range: this_week | last_week | last_30_days | custom
+blink connector exec composio_granola list_meetings POST '{"time_range":"this_week"}'
+
+# Custom window
+blink connector exec composio_granola list_meetings POST '{"time_range":"custom","custom_start":"2026-04-01","custom_end":"2026-04-30"}'
+
+# Get full notes/summary/attendees for one or more meetings (max 10 ids per call).
+# Substitute real UUIDs from list_meetings — never pass placeholder strings literally.
+blink connector exec composio_granola get_meetings POST '{"meeting_ids":["<MEETING_UUID_A>","<MEETING_UUID_B>"]}'
+
+# Verbatim transcript for a single meeting (paid Granola tier required — see gotcha below)
+blink connector exec composio_granola get_meeting_transcript POST '{"meeting_id":"<MEETING_UUID>"}'
+
+# Natural-language Q&A across the user's meeting corpus. Returns text with
+# numbered citation links you MUST preserve in your reply to the user.
+blink connector exec composio_granola query_granola_meetings POST '{"query":"What follow-ups did we agree on with Acme last week?"}'
+
+# Optionally scope the query to specific meetings
+blink connector exec composio_granola query_granola_meetings POST '{"query":"Action items?","document_ids":["<MEETING_UUID>"]}'
+```
+
+**Picking the right tool:**
+
+- Open-ended questions about decisions, follow-ups, or summaries →
+  `query_granola_meetings` (cheaper than fetching meetings then re-asking the LLM).
+- "Show me my meetings this week" → `list_meetings`, then `get_meetings` for
+  the ones the user wants to drill into.
+- "What were the exact words" / quote extraction → `get_meeting_transcript`.
+
+**Granola gotcha — separate signup is required.** OAuth-connecting Granola
+in Blink only authenticates the user; Granola's MCP product gates on a
+**second** signup at <https://granola.ai/mcp-signup>. Until that's done,
+every tool call comes back as `403` with the message
+`Unauthorized: user has not created a Granola account yet. Sign up at
+https://granola.ai/mcp-signup and then try again.` Show that link to the
+user — there is nothing to fix on Blink's side.
+
+**Granola gotcha — `get_meeting_transcript` is paid-tier only.** Free-tier
+users see a `402` with `Transcripts are only available to paid Granola tiers
+(Upgrade at https://granola.ai/settings, then retry.)`. When you hit that,
+show the upgrade link and fall back to `query_granola_meetings` for the same
+question — it works on free tier and is usually good enough for quote-style
+or summary-style asks.
+
+`blink connector tool-execute composio_granola GRANOLA_MCP_*` is **not**
+supported (Composio's generic tool catalog mis-types the upstream MCP output
+schema). Always use `blink connector exec` with the lowercase tool name, as
+shown above.
 
 ## Scripting — capture output
 
