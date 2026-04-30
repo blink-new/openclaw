@@ -49,7 +49,7 @@ fly_machine_state() {
 
 create_machine() {
   # create_machine <init_entrypoint_json> <init_cmd_json>
-  # entrypoint: ["/app/blink-entrypoint.sh"] (default) or custom
+  # entrypoint: ["/usr/local/bin/blink-entrypoint.sh"] (default) or custom
   # cmd: the CMD array for the container
   local init_entrypoint="$1" init_cmd="$2"
   local payload
@@ -172,10 +172,10 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "MACHINE A: Baseline — no WhatsApp configured"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Use default ENTRYPOINT (/app/blink-entrypoint.sh) + default CMD
+# Use default ENTRYPOINT (/usr/local/bin/blink-entrypoint.sh) + default CMD
 echo "==> Creating machine A..."
 MACHINE_A=$(create_machine \
-  '["/app/blink-entrypoint.sh"]' \
+  '["/usr/local/bin/blink-entrypoint.sh"]' \
   '["node", "openclaw.mjs", "gateway", "--allow-unconfigured"]')
 echo "    Machine A: $MACHINE_A"
 
@@ -201,7 +201,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 WA_CONFIG_B64=$(printf '%s' '{"agents":{"defaults":{"workspace":"/data/workspace"}},"gateway":{"auth":{"mode":"token"},"controlUi":{"dangerouslyAllowHostHeaderOriginFallback":true,"dangerouslyDisableDeviceAuth":true}},"browser":{"noSandbox":true},"channels":{"whatsapp":{"accounts":{"default":{"authDir":"/data/workspace/.whatsapp"}}}}}' | base64 | tr -d '\n')
 
 echo "==> Creating machine B (WhatsApp configured from boot)..."
-WA_CMD="mkdir -p /data/workspace/.whatsapp /data/agents/main/agent /data/agents/main/sessions /data/scripts /data/npm-global && printf '%s' '${WA_CONFIG_B64}' | base64 -d > /data/openclaw.json && chown -R node:node /data && exec /app/blink-entrypoint.sh node openclaw.mjs gateway --allow-unconfigured"
+WA_CMD="mkdir -p /data/workspace/.whatsapp /data/agents/main/agent /data/agents/main/sessions /data/scripts /data/npm-global && printf '%s' '${WA_CONFIG_B64}' | base64 -d > /data/openclaw.json && chown -R node:node /data && exec /usr/local/bin/blink-entrypoint.sh node openclaw.mjs gateway --allow-unconfigured"
 MACHINE_B=$(create_machine \
   '[ "/bin/sh", "-c" ]' \
   "$(python3 -c "import json; print(json.dumps(['''$WA_CMD''']))")")
