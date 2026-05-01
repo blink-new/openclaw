@@ -192,6 +192,16 @@ async function callSubagentGateway(
   return await subagentSpawnDeps.callGateway({
     ...params,
     ...(scopes != null ? { scopes } : {}),
+    // Headless agent loopback calls authenticate via the shared gateway token.
+    // Presenting a device identity gates admin-scope methods (sessions.delete,
+    // sessions.patch, etc.) behind a device pairing approval flow that cannot
+    // complete in agent contexts (no operator to approve scope upgrades). Pinning
+    // ADMIN_SCOPE above only avoids upgrade-during-runtime; it does not help if
+    // the device was paired through the bootstrap handoff (which intentionally
+    // never grants operator.admin). Skipping device identity moves auth to the
+    // shared token and avoids the scope-upgrade rejection at message-handler.ts
+    // entirely. See also callGatewayTool in src/agents/tools/gateway.ts.
+    deviceIdentity: null,
   });
 }
 

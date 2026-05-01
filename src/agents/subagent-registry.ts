@@ -850,6 +850,10 @@ async function sweepSubagentRuns() {
             emitLifecycleHooks: false,
           },
           timeoutMs: 10_000,
+          // Agent loopback admin-scope call: skip device identity so the shared
+          // gateway token authenticates without triggering scope-upgrade
+          // approval (no operator to approve in headless agent contexts).
+          deviceIdentity: null,
         });
       } catch (err) {
         log.warn("sessions.delete failed during subagent sweep; keeping run for retry", {

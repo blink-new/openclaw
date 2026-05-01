@@ -582,6 +582,10 @@ export async function runSubagentAnnounceFlow(params: {
           method: "sessions.patch",
           params: { key: params.childSessionKey, label: params.label },
           timeoutMs: 10_000,
+          // Agent loopback admin-scope call: skip device identity so the shared
+          // gateway token authenticates without triggering scope-upgrade
+          // approval (no operator to approve in headless agent contexts).
+          deviceIdentity: null,
         });
       } catch {
         // Best-effort
@@ -597,6 +601,9 @@ export async function runSubagentAnnounceFlow(params: {
             emitLifecycleHooks: params.spawnMode === "session",
           },
           timeoutMs: 10_000,
+          // Agent loopback admin-scope call: skip device identity. See note
+          // above on sessions.patch.
+          deviceIdentity: null,
         });
       } catch {
         // ignore
