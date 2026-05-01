@@ -279,6 +279,7 @@ describe("subagent announce seam flow", () => {
         emitLifecycleHooks: false,
       },
       timeoutMs: 10_000,
+      deviceIdentity: null,
     });
   });
 
@@ -310,6 +311,7 @@ describe("subagent announce seam flow", () => {
         emitLifecycleHooks: true,
       },
       timeoutMs: 10_000,
+      deviceIdentity: null,
     });
   });
 
