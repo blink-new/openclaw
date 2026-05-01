@@ -14,7 +14,8 @@ description: >
   TikTok, YouTube, Mailchimp, Typeform, Calendly, Etsy, Vercel,
   Reddit, Facebook, Monday, Amplitude, Google Analytics, Zendesk, Apollo,
   Datagma, Mixpanel, PeopleDataLabs, Google BigQuery, Supabase, QuickBooks,
-  Brex, Google Ads, Intercom, Gong, Box, Todoist, Ashby, Basecamp, Granola.
+  Brex, Google Ads, Reddit Ads, Intercom, Gong, Box, Todoist, Ashby,
+  Basecamp, Granola.
   (3) Native Composio tool catalog (file uploads, attachments, complex
   writes): `blink connector tool-execute <composio_provider> <TOOL_SLUG>
   '<json>'` — unlocks 1000+ Composio tools, auto-uploads URL/path file
@@ -58,6 +59,7 @@ A missing provider means it's not linked — ask the user to connect it in the A
 | Microsoft OneDrive | `microsoft_onedrive` | `https://graph.microsoft.com/v1.0/` |
 | Microsoft Teams | `microsoft_teams` | `https://graph.microsoft.com/v1.0/` |
 | LinkedIn | `linkedin` | `https://api.linkedin.com/v2/` |
+| LinkedIn Ads | `linkedin_ads` | `https://api.linkedin.com/rest/` (Marketing API — `LinkedIn-Version: YYYYMM` header injected automatically) |
 | Salesforce | `salesforce` | `https://{instance}.salesforce.com/` |
 | Gmail | `google_gmail` | `https://gmail.googleapis.com/gmail/v1/` |
 | Google Drive | `google_drive` | `https://www.googleapis.com/drive/v3/` |
@@ -118,6 +120,8 @@ A missing provider means it's not linked — ask the user to connect it in the A
 | Ashby | `composio_ashby` | `https://api.ashbyhq.com/` |
 | Basecamp | `composio_basecamp` | `https://3.basecampapi.com/` (path: `{accountId}/projects.json`) |
 | Granola | `composio_granola` | MCP server at `https://mcp.granola.ai/mcp` — see Granola section below for the tool-name path style |
+| Reddit Ads | `composio_reddit_ads` | `https://ads-api.reddit.com/api/v3/` (path: `ad_accounts/{id}/campaigns`) |
+| Meta Ads | `composio_meta_ads` | `https://graph.facebook.com/v23.0/` (paths: `me/adaccounts`, `act_<id>/campaigns`, `act_<id>/insights`) — API_KEY auth (System User Access Token) |
 
 ## Examples by Provider
 
@@ -356,6 +360,44 @@ blink connector exec linkedin ugcPosts POST '{"author":"urn:li:person:PERSON_ID"
 # Like a post
 blink connector exec linkedin 'socialActions/urn%3Ali%3Ashare%3A123/likes' POST '{"actor":"urn:li:person:PERSON_ID"}'
 ```
+
+### LinkedIn Ads
+
+LinkedIn Ads is a **separate** connector from `linkedin` — same LinkedIn Developer
+App, different OAuth scopes (`r_ads`, `rw_ads`, `r_ads_reporting` plus
+`openid profile email` for display name). The user must have approved the
+"Advertising API" product on the LinkedIn app, and Blink will only let an agent
+use this connector if the workspace has explicitly connected `linkedin_ads`.
+
+The base URL is `https://api.linkedin.com/rest/` (Marketing REST API). Blink
+auto-injects `LinkedIn-Version: 202509` and `X-Restli-Protocol-Version: 2.0.0`
+on every request — never set them manually.
+
+```bash
+# Get the connected member's URN (needed for downstream calls).
+blink connector exec linkedin_ads userinfo GET
+# returns { sub: "abc123", name: "...", email: "..." } — `sub` is the member ID.
+
+# List the ad accounts the member has access to (sponsored accounts they own
+# or were granted a role on). The `q=search&search=(...)` shape is required —
+# LinkedIn rejects `?q=role` style queries on /rest endpoints.
+blink connector exec linkedin_ads 'adAccounts?q=search&search=(reference:(values:List(urn%3Ali%3Aperson%3ASUB)))' GET
+
+# List all campaigns under an ad account
+blink connector exec linkedin_ads 'adAccounts/ACCOUNT_ID/adCampaigns?q=search' GET
+
+# Run an analytics report (last 7 days, account-level, by impressions/clicks/spend)
+blink connector exec linkedin_ads 'adAnalytics?q=analytics&dateRange=(start:(year:2026,month:4,day:24),end:(year:2026,month:5,day:1))&timeGranularity=DAILY&accounts=List(urn%3Ali%3AsponsoredAccount%3AACCOUNT_ID)&fields=impressions,clicks,costInUsd' GET
+```
+
+Common 4xx clues:
+- `401 UNAUTHORIZED` — token is missing one of the ads scopes. Disconnect and
+  reconnect the connector so LinkedIn issues a fresh token with the new scope set.
+- `403 ACCESS_DENIED` — the member exists but doesn't have a role on that ad
+  account. Have an admin grant `VIEWER`/`CAMPAIGN_MANAGER` in LinkedIn
+  Campaign Manager → Account settings → Manage access.
+- `426 Upgrade Required` — wrong `LinkedIn-Version` for the endpoint. Bump the
+  `LINKEDIN_ADS_API_VERSION` env var on blink-apis.
 
 ### Salesforce
 
@@ -1149,6 +1191,120 @@ or summary-style asks.
 supported (Composio's generic tool catalog mis-types the upstream MCP output
 schema). Always use `blink connector exec` with the lowercase tool name, as
 shown above.
+
+### Reddit Ads
+
+Reddit Ads is **separate** from regular Reddit (`composio_reddit`) — it uses a
+different API host (`ads-api.reddit.com`) and its own OAuth scopes. The
+Composio Auth Config must request these scopes (Composio names → Reddit's
+underlying scopes): `identity`, `adsread` (`ads:read`), `adsedit`
+(`ads:edit`), `adsconversions`, `history`, `read`. Without `adsread` Reddit
+returns **404** (not 403) on every `/api/v3/*` endpoint.
+
+Connect "Reddit Ads" in Workspace Settings even if you've already connected
+Reddit for organic posts.
+
+Most write paths require an `ad_account_id` (format: `a2_xxxxx`). Find one via
+`me` → list businesses → list ad accounts.
+
+```bash
+# Authenticated user
+blink connector exec composio_reddit_ads me GET
+
+# List businesses you're a member of
+blink connector exec composio_reddit_ads businesses GET
+
+# List ad accounts under a business
+blink connector exec composio_reddit_ads businesses/BUSINESS_ID/ad_accounts GET
+
+# List campaigns in an ad account
+blink connector exec composio_reddit_ads ad_accounts/AD_ACCOUNT_ID/campaigns GET
+
+# Create a campaign (objective examples: TRAFFIC, CONVERSIONS, REACH, VIDEO_VIEWS, APP_INSTALLS)
+blink connector exec composio_reddit_ads ad_accounts/AD_ACCOUNT_ID/campaigns POST '{"data":{"name":"Spring launch","objective":"TRAFFIC","status":"PAUSED"}}'
+
+# List ad groups under a campaign
+blink connector exec composio_reddit_ads ad_accounts/AD_ACCOUNT_ID/ad_groups GET '{"campaign_ids":"CAMPAIGN_ID"}'
+
+# Pull a basic report (date range, granularity, breakdowns vary by metric)
+blink connector exec composio_reddit_ads ad_accounts/AD_ACCOUNT_ID/reports POST '{"data":{"breakdowns":["DATE"],"fields":["IMPRESSIONS","CLICKS","SPEND"],"starts_at":"2026-04-01T00:00:00Z","ends_at":"2026-04-30T23:59:59Z"}}'
+```
+
+Native tool path (`tool-execute`) gives access to all 83 Reddit Ads tools
+(custom audiences, batch product upload, lead-gen forms, etc.):
+
+```bash
+blink connector tool-execute composio_reddit_ads REDDIT_ADS_GET_ME '{}'
+blink connector tool-execute composio_reddit_ads REDDIT_ADS_LIST_AD_ACCOUNTS_FOR_BUSINESS '{"business_id":"BUSINESS_ID"}'
+```
+
+### Meta Ads
+
+Meta Ads uses the Facebook Graph API (`https://graph.facebook.com/v23.0/`) and
+covers Facebook + Instagram ad accounts. Auth is **API_KEY** — each user
+generates their own **System User Access Token** in Meta Business Manager
+(Business Settings → Users → System Users → Generate New Token) with the
+scopes `ads_management`, `ads_read`, `business_management` and pastes it into
+the Connect dialog. Tokens can be set to never expire — set + forget.
+
+Almost every write path needs an **ad account ID** in the form `act_<digits>`.
+Get yours via `me/adaccounts`. The leading `act_` prefix is required by Meta —
+omit it and the API returns 400.
+
+```bash
+# Identity check — returns the System User's id + name
+blink connector exec composio_meta_ads 'me?fields=id,name' GET
+
+# List every ad account the token can manage
+blink connector exec composio_meta_ads 'me/adaccounts?fields=name,account_id,account_status,currency' GET
+
+# List campaigns under one ad account
+blink connector exec composio_meta_ads 'act_AD_ACCOUNT_ID/campaigns?fields=name,objective,status,daily_budget,created_time' GET
+
+# Create a paused campaign (objective examples: OUTCOME_TRAFFIC, OUTCOME_AWARENESS,
+# OUTCOME_ENGAGEMENT, OUTCOME_LEADS, OUTCOME_SALES, OUTCOME_APP_PROMOTION)
+blink connector exec composio_meta_ads act_AD_ACCOUNT_ID/campaigns POST \
+  '{"name":"Spring launch","objective":"OUTCOME_TRAFFIC","status":"PAUSED","special_ad_categories":[]}'
+
+# Update a campaign — Meta returns the campaign id from the create call as `id`
+blink connector exec composio_meta_ads CAMPAIGN_ID POST '{"name":"Spring launch v2","status":"ACTIVE"}'
+
+# List ad sets under a campaign
+blink connector exec composio_meta_ads 'act_AD_ACCOUNT_ID/adsets?fields=name,status,daily_budget,targeting' GET
+
+# Run an insights report (last 7 days, by day, account-level)
+blink connector exec composio_meta_ads 'act_AD_ACCOUNT_ID/insights?fields=impressions,clicks,spend,ctr,cpc&date_preset=last_7d&time_increment=1' GET
+
+# Custom audiences
+blink connector exec composio_meta_ads act_AD_ACCOUNT_ID/customaudiences GET
+
+# Pages the user manages (needed for ad creative `object_story_spec.page_id`)
+blink connector exec composio_meta_ads 'me/accounts?fields=id,name,access_token' GET
+```
+
+Common 4xx clues:
+- `400 OAuthException #100 "Param adcreative is required"` — you missed a
+  required field; Meta error messages list the exact missing keys at the end.
+- `400 OAuthException #190 "Error validating access token"` — the token has
+  expired (only happens if it wasn't set to "Never expires") OR the user
+  changed their Facebook password and Meta invalidated all tokens. User must
+  generate a fresh System User token and reconnect.
+- `403 OAuthException #200 "Permissions error"` — the System User wasn't
+  granted access to that ad account. In Business Manager → Users → System
+  Users → click the user → Add Assets → assign the ad account with at least
+  `Manage Performance` permission.
+- `400 #100 "Tried accessing nonexisting field"` — wrong API version. Bump
+  `META_ADS_BASE_URL` env var to the next Graph API version.
+- `400 #80004 "There have been too many calls"` — Meta rate limit. Each
+  business has its own bucket so this only affects one user; back off and retry.
+
+Native tool path (`tool-execute`) gives access to all 50 Meta Ads tools
+(structured create/update flows, batch ad insights, audience uploads, etc.):
+
+```bash
+blink connector tool-execute composio_meta_ads METAADS_LIST_AD_ACCOUNTS '{}'
+blink connector tool-execute composio_meta_ads METAADS_GET_INSIGHTS '{"object_id":"act_AD_ACCOUNT_ID","date_preset":"last_7d"}'
+```
 
 ## Scripting — capture output
 
