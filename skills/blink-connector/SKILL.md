@@ -121,7 +121,7 @@ A missing provider means it's not linked — ask the user to connect it in the A
 | Basecamp | `composio_basecamp` | `https://3.basecampapi.com/` (path: `{accountId}/projects.json`) |
 | Granola | `composio_granola` | MCP server at `https://mcp.granola.ai/mcp` — see Granola section below for the tool-name path style |
 | Reddit Ads | `composio_reddit_ads` | `https://ads-api.reddit.com/api/v3/` (path: `ad_accounts/{id}/campaigns`) |
-| Meta Ads | `composio_meta_ads` | `https://graph.facebook.com/v23.0/` (paths: `me/adaccounts`, `act_<id>/campaigns`, `act_<id>/insights`) — API_KEY auth (System User Access Token) |
+| Meta Ads | `composio_meta_ads` | `https://graph.facebook.com/v24.0/` (paths: `me/adaccounts`, `act_<id>/campaigns`, `act_<id>/insights`) — API_KEY auth (System User Access Token) |
 
 ## Examples by Provider
 
@@ -1240,7 +1240,7 @@ blink connector tool-execute composio_reddit_ads REDDIT_ADS_LIST_AD_ACCOUNTS_FOR
 
 ### Meta Ads
 
-Meta Ads uses the Facebook Graph API (`https://graph.facebook.com/v23.0/`) and
+Meta Ads uses the Facebook Graph API (`https://graph.facebook.com/v24.0/`) and
 covers Facebook + Instagram ad accounts. Auth is **API_KEY** — each user
 generates their own **System User Access Token** in Meta Business Manager
 (Business Settings → Users → System Users → Generate New Token) with the

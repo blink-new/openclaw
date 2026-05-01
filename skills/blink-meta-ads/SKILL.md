@@ -13,10 +13,10 @@ metadata:
 
 Manage Meta Ads (covers Facebook + Instagram + Messenger placements) via the
 Composio-backed `composio_meta_ads` connector. Routes to the Facebook Graph
-API at `https://graph.facebook.com/v23.0/`.
+API at `https://graph.facebook.com/v24.0/`.
 
 **Provider key**: `composio_meta_ads`
-**Base URL**: `https://graph.facebook.com/v23.0/` (override via
+**Base URL**: `https://graph.facebook.com/v24.0/` (override via
 `META_ADS_BASE_URL` env var on `blink-apis` when Meta deprecates the version)
 **Auth**: API_KEY (System User Access Token) — Composio prompts the user for
 the token at connect time, no Meta App Review required
