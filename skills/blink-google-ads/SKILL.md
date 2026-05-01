@@ -79,16 +79,24 @@ blink connector exec composio_googleads v23/customers/$CUSTOMER_ID/googleAds:sea
 ## Create a campaign budget
 
 Campaign budgets are created separately, then referenced when creating a
-campaign. `amount_micros` is in micros of the account currency (so
+campaign. `amountMicros` is in micros of the account currency (so
 `1_000_000` = 1 unit, e.g. $1.00).
+
+> ⚠️ All JSON request payloads MUST use **camelCase** field names — the
+> protobuf field names are snake_case but Google's REST mapping rejects them
+> with `400 Invalid JSON payload "Unknown name 'foo'"`. snake_case is only
+> valid inside `query` strings (GAQL syntax). This applies to every
+> `:mutate` payload below — `amountMicros`, `deliveryMethod`, `explicitShare`,
+> `advertisingChannelType`, `campaignBudget`, `manualCpc`, `resourceName`,
+> `updateMask`, etc.
 
 ```bash
 blink connector exec composio_googleads v23/customers/$CUSTOMER_ID/campaignBudgets:mutate POST '{
   "operations": [{
     "create": {
       "name": "Spring launch budget",
-      "amount_micros": "10000000",
-      "delivery_method": "STANDARD",
+      "amountMicros": "10000000",
+      "deliveryMethod": "STANDARD",
       "explicitShare": true
     }
   }]
@@ -96,9 +104,6 @@ blink connector exec composio_googleads v23/customers/$CUSTOMER_ID/campaignBudge
 # → returns "resourceName": "customers/123/campaignBudgets/4567" — extract the
 #   numeric suffix as your BUDGET_ID for the campaign create call below.
 ```
-
-> ⚠️ Use camelCase `explicitShare`, not `explicit_share` — Google's REST
-> mapping rejects the snake_case form with a `400 Invalid JSON payload` error.
 
 ---
 
@@ -110,9 +115,9 @@ blink connector exec composio_googleads v23/customers/$CUSTOMER_ID/campaigns:mut
     "create": {
       "name": "Spring launch — search",
       "status": "PAUSED",
-      "advertising_channel_type": "SEARCH",
-      "campaign_budget": "customers/'$CUSTOMER_ID'/campaignBudgets/BUDGET_ID",
-      "manual_cpc": {}
+      "advertisingChannelType": "SEARCH",
+      "campaignBudget": "customers/'$CUSTOMER_ID'/campaignBudgets/BUDGET_ID",
+      "manualCpc": {}
     }
   }]
 }'
@@ -122,15 +127,19 @@ blink connector exec composio_googleads v23/customers/$CUSTOMER_ID/campaigns:mut
 
 ## Pause / Resume / Remove
 
+> All `update` ops use **camelCase** field names (`resourceName`, `updateMask`)
+> — the same gotcha as `explicitShare` above. snake_case returns `400 Invalid
+> JSON payload "Unknown name 'resource_name'"`.
+
 ```bash
 # Pause
 blink connector exec composio_googleads v23/customers/$CUSTOMER_ID/campaigns:mutate POST '{
-  "operations": [{"update":{"resource_name":"customers/'$CUSTOMER_ID'/campaigns/CAMPAIGN_ID","status":"PAUSED"},"update_mask":"status"}]
+  "operations": [{"update":{"resourceName":"customers/'$CUSTOMER_ID'/campaigns/CAMPAIGN_ID","status":"PAUSED"},"updateMask":"status"}]
 }'
 
 # Resume
 blink connector exec composio_googleads v23/customers/$CUSTOMER_ID/campaigns:mutate POST '{
-  "operations": [{"update":{"resource_name":"customers/'$CUSTOMER_ID'/campaigns/CAMPAIGN_ID","status":"ENABLED"},"update_mask":"status"}]
+  "operations": [{"update":{"resourceName":"customers/'$CUSTOMER_ID'/campaigns/CAMPAIGN_ID","status":"ENABLED"},"updateMask":"status"}]
 }'
 
 # Remove (irreversible — it stays in reports but no longer serves)
@@ -148,7 +157,7 @@ blink connector exec composio_googleads v23/customers/$CUSTOMER_ID/campaigns:mut
 | `403 CUSTOMER_NOT_ENABLED` | The Google Ads account has no billing or first campaign. The user must finish the Ads onboarding wizard in the Google Ads UI. |
 | `403 USER_PERMISSION_DENIED` | The connected Google account doesn't have access to that customer id, or has read-only when the call requires write. |
 | `400 Invalid JSON payload "Unknown name 'foo'"` | Field name shape mismatch. Google's REST mapping is **camelCase** for top-level operation fields (`explicitShare`, `resourceName`, `updateMask`) but **snake_case** inside `query` strings. |
-| `400 INVALID_VALUE for field 'campaign_budget'` | Budget resource name is wrong — must be the full string `customers/{id}/campaignBudgets/{id}`, not just the numeric id. |
+| `400 INVALID_VALUE for field 'campaignBudget'` | Budget resource name is wrong — must be the full string `customers/{id}/campaignBudgets/{id}`, not just the numeric id. |
 | `404` on `googleAds:search` | The customer id you're targeting is a *manager* account (MCC), not an operating account. Use `listAccessibleCustomers` then filter to non-manager ones. |
 
 ---

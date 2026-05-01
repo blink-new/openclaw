@@ -181,5 +181,6 @@ audience uploads — are also available:
 
 ```bash
 blink connector tool-execute composio_meta_ads METAADS_LIST_AD_ACCOUNTS '{}'
-blink connector tool-execute composio_meta_ads METAADS_GET_INSIGHTS '{"object_id":"act_AD_ACCOUNT_ID","date_preset":"last_7d"}'
+# $AD_ACCOUNT_ID already includes the act_ prefix — do NOT double-prefix.
+blink connector tool-execute composio_meta_ads METAADS_GET_INSIGHTS '{"object_id":"'"$AD_ACCOUNT_ID"'","date_preset":"last_7d"}'
 ```
