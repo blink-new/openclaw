@@ -176,16 +176,19 @@ describe("slack preview streaming eligibility", () => {
     ).toBe(true);
   });
 
-  it("stays off for top-level DMs without a reply thread", () => {
+  it("stays on for top-level DMs without a reply thread (no carve-out)", () => {
+    // The earlier carve-out kept DM-without-thread off, which prevented
+    // Telegram-parity bullet consolidation in the most common Slack
+    // scenario. Non-off mode now always enables preview streaming.
     expect(
       shouldEnableSlackPreviewStreaming({
         mode: "partial",
         isDirectMessage: true,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
-  it("allows DM preview when the reply is threaded", () => {
+  it("stays on for threaded DMs", () => {
     expect(
       shouldEnableSlackPreviewStreaming({
         mode: "partial",
@@ -195,7 +198,7 @@ describe("slack preview streaming eligibility", () => {
     ).toBe(true);
   });
 
-  it("keeps top-level DMs off even when replyToMode would create a reply thread", () => {
+  it("turns off only when streaming mode is explicitly off", () => {
     const streamThreadHint = resolveSlackStreamingThreadHint({
       replyToMode: "all",
       incomingThreadTs: undefined,
@@ -205,9 +208,15 @@ describe("slack preview streaming eligibility", () => {
 
     expect(
       shouldEnableSlackPreviewStreaming({
-        mode: "partial",
+        mode: "off",
         isDirectMessage: true,
         threadTs: undefined,
+      }),
+    ).toBe(false);
+    expect(
+      shouldEnableSlackPreviewStreaming({
+        mode: "off",
+        isDirectMessage: false,
       }),
     ).toBe(false);
     expect(streamThreadHint).toBe("1000.4");
