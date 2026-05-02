@@ -285,7 +285,69 @@ describe("dispatchPreparedSlackMessage preview fallback", () => {
     );
   });
 
-  it("keeps same-content tool and final payloads distinct after preview fallback", async () => {
+  it("folds N mid-turn tool/block payloads into ONE draft preview message (Telegram parity)", async () => {
+    // The deterministic flow: each mid-turn payload (tool OR block kind)
+    // routes through pushPreviewToolProgress → draftStream.update(...) →
+    // chat.update on the SAME Slack message. No new chat.postMessage per
+    // payload. Only the final reply triggers a separate finalize step.
+    const updateMock = vi.fn();
+    const draftStream = {
+      update: updateMock,
+      flush: noopAsync,
+      clear: noopAsync,
+      stop: noop,
+      forceNewMessage: noop,
+      messageId: () => "171234.567",
+      channelId: () => "C123",
+    };
+    createSlackDraftStreamMock.mockReturnValueOnce(draftStream);
+    finalizeSlackPreviewEditMock.mockResolvedValueOnce(undefined);
+
+    mockedDispatchSequence = [
+      { kind: "tool", payload: { text: "🛠️ Exec: # Look up Slack user IDs" } },
+      { kind: "block", payload: { text: "vinay@blink.new -> U0A0MSG242W" } },
+      { kind: "tool", payload: { text: "🛠️ Exec: BOT=xoxb-2 curl chat.postMessage" } },
+      { kind: "block", payload: { text: "Vinay: ok" } },
+      { kind: "final", payload: { text: "Done. DM'd Vinay and Saurabh." } },
+    ];
+
+    await dispatchPreparedSlackMessage(createPreparedSlackMessage());
+
+    // 4 mid-turn payloads → 4 draftStream.update() calls (chat.update edits
+    // on the same message). Each renders the cumulative bullet list.
+    expect(updateMock).toHaveBeenCalledTimes(4);
+    expect(updateMock).toHaveBeenNthCalledWith(1, "Working…\n• 🛠️ Exec: # Look up Slack user IDs");
+    expect(updateMock).toHaveBeenNthCalledWith(
+      2,
+      "Working…\n• 🛠️ Exec: # Look up Slack user IDs\n• vinay@blink.new -> U0A0MSG242W",
+    );
+    expect(updateMock).toHaveBeenNthCalledWith(
+      3,
+      "Working…\n• 🛠️ Exec: # Look up Slack user IDs\n• vinay@blink.new -> U0A0MSG242W\n• 🛠️ Exec: BOT=xoxb-2 curl chat.postMessage",
+    );
+    expect(updateMock).toHaveBeenNthCalledWith(
+      4,
+      "Working…\n• 🛠️ Exec: # Look up Slack user IDs\n• vinay@blink.new -> U0A0MSG242W\n• 🛠️ Exec: BOT=xoxb-2 curl chat.postMessage\n• Vinay: ok",
+    );
+
+    // Final payload finalizes the draft via chat.update with the answer
+    // text — REPLACES the "Working…" preview. Exactly one finalize call.
+    expect(finalizeSlackPreviewEditMock).toHaveBeenCalledTimes(1);
+    expect(finalizeSlackPreviewEditMock).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "Done. DM'd Vinay and Saurabh." }),
+    );
+
+    // No fan-out: deliverNormally / deliverReplies must NOT have fired for
+    // any mid-turn payload, and final's finalize succeeded so no fallback.
+    expect(deliverRepliesMock).not.toHaveBeenCalled();
+  });
+
+  it("consolidates tool payloads into draft preview (Telegram parity); only final triggers finalize", async () => {
+    // With Telegram-parity bullet consolidation, mid-turn tool payloads are
+    // appended to the draftStream "Working…" message via chat.update — no
+    // separate Slack message. Only the final reply triggers finalize, which
+    // (in this fallback test) fails and falls back to deliverNormally exactly
+    // once.
     mockedDispatchSequence = [
       { kind: "tool", payload: { text: SAME_TEXT } },
       { kind: "final", payload: { text: SAME_TEXT } },
@@ -293,17 +355,12 @@ describe("dispatchPreparedSlackMessage preview fallback", () => {
 
     await dispatchPreparedSlackMessage(createPreparedSlackMessage());
 
-    expect(finalizeSlackPreviewEditMock).toHaveBeenCalledTimes(2);
-    expect(deliverRepliesMock).toHaveBeenCalledTimes(2);
-    expect(deliverRepliesMock).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        replyThreadTs: THREAD_TS,
-        replies: [expect.objectContaining({ text: SAME_TEXT })],
-      }),
+    expect(finalizeSlackPreviewEditMock).toHaveBeenCalledTimes(1);
+    expect(finalizeSlackPreviewEditMock).toHaveBeenCalledWith(
+      expect.objectContaining({ text: SAME_TEXT }),
     );
-    expect(deliverRepliesMock).toHaveBeenNthCalledWith(
-      2,
+    expect(deliverRepliesMock).toHaveBeenCalledTimes(1);
+    expect(deliverRepliesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         replyThreadTs: THREAD_TS,
         replies: [expect.objectContaining({ text: SAME_TEXT })],

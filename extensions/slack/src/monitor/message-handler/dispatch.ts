@@ -583,6 +583,38 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
       const draftMessageId = draftStream?.messageId();
       const draftChannelId = draftStream?.channelId();
       const trimmedFinalText = reply.trimmedText;
+
+      // Telegram-parity bullet consolidation:
+      // Mid-turn text-only payloads (kind != "final") get folded into the
+      // existing draftStream "Working…" preview as bullet lines via
+      // chat.update — same single Slack message, no fan-out. Only the
+      // final reply finalizes the draft (replaces the preview with the
+      // answer text).
+      //
+      // Skips: media (needs upload), errors (need their own message),
+      // Slack Block-Kit-laden payloads (need rich rendering), empty text.
+      // Those continue to use the canFinalizeViaPreviewEdit / deliverNormally
+      // path below.
+      const canConsolidateAsBullet =
+        Boolean(draftStream) &&
+        previewToolProgressEnabled &&
+        info.kind !== "final" &&
+        !reply.hasMedia &&
+        !payload.isError &&
+        !slackBlocks?.length &&
+        trimmedFinalText.length > 0;
+      if (canConsolidateAsBullet) {
+        const finalThreadTs = usedReplyThreadTs ?? statusThreadTs;
+        if (deliveryTracker.hasDelivered({ kind: info.kind, payload, threadTs: finalThreadTs })) {
+          observedReplyDelivery = true;
+          return;
+        }
+        pushPreviewToolProgress(trimmedFinalText);
+        observedReplyDelivery = true;
+        deliveryTracker.markDelivered({ kind: info.kind, payload, threadTs: finalThreadTs });
+        return;
+      }
+
       const canFinalizeViaPreviewEdit =
         previewStreamingEnabled &&
         streamMode !== "status_final" &&
