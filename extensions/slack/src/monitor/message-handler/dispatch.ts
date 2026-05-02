@@ -763,7 +763,15 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
             ? !resolveChannelStreamingBlockEnabled(account.config)
             : undefined,
         onModelSelected,
-        suppressDefaultToolProgressMessages: previewToolProgressEnabled ? true : undefined,
+        // Mirror Telegram's suppression rule: when preview streaming is
+        // disabled, or when we have a draft stream that already consolidates
+        // tool progress into a single edited message, suppress the default
+        // per-tool-call fan-out via chat.postMessage. Without this, every
+        // tool call/result becomes a new Slack message, bloating channels
+        // and threads. When `useStreaming` is active (no draft stream), tool
+        // result text continues to flow into the native chat.startStream
+        // session unchanged.
+        suppressDefaultToolProgressMessages: !previewStreamingEnabled || Boolean(draftStream),
         onPartialReply: useStreaming
           ? undefined
           : !previewStreamingEnabled
