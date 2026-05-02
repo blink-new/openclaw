@@ -623,8 +623,8 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
       if (canConsolidateAsBullet) {
         // While partial token streaming is rendering agent text into the
         // draft preview, do not overwrite it with a tool/block bullet.
-        // The agent's own narrative prose (visible in the streaming text)
-        // carries the signal for that turn — same as Telegram lanes.
+        // The agent's own narrative prose carries the signal — same as
+        // Telegram lanes.
         if (previewToolProgressSuppressed) {
           logVerbose(
             `slack: skipping ${info.kind} bullet consolidation (partial streaming active)`,
@@ -636,11 +636,21 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
           observedReplyDelivery = true;
           return;
         }
+        // Transition narrative → bullets: rotate (forceNewMessage) so the
+        // current narrative draft is preserved as a permanent Slack
+        // message, and a fresh draft begins to host the ephemeral bullet
+        // preview.
+        if (currentDraftKind === "narrative" && draftStream) {
+          draftStream.forceNewMessage();
+          previewToolProgressLines = [];
+          appendRenderedText = "";
+          appendSourceText = "";
+          statusUpdateCount = 0;
+        }
         // Inline the bullet append + draftStream.update so this works
-        // regardless of the previewToolProgressEnabled flag (which still
-        // gates the existing pushPreviewToolProgress callback). Same
-        // rendering format: "Working…\n• …\n• …" capped to last 8 lines,
-        // dedup-suppressed when the latest line matches the previous one.
+        // regardless of the previewToolProgressEnabled flag. Format:
+        // "Working…\n• …\n• …" capped to last 8 lines, dedup-suppressed
+        // when the latest line matches the previous one.
         const normalized = trimmedFinalText.replace(/\s+/g, " ").trim();
         if (normalized) {
           const previous = previewToolProgressLines.at(-1);
@@ -655,10 +665,35 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
             );
             draftStream?.update(renderedText);
             hasStreamedMessage = true;
+            currentDraftKind = "bullets";
           }
         }
         observedReplyDelivery = true;
         deliveryTracker.markDelivered({ kind: info.kind, payload, threadTs: finalThreadTs });
+        return;
+      }
+
+      // Final transition: if the current draft is a bullet-only Working…
+      // preview, delete it before posting the answer as a fresh permanent
+      // message. We do NOT want to chat.update the bullets into the answer
+      // because that visually "becomes" a new message anyway and obscures
+      // the boundary between scaffolding and final content.
+      if (
+        info.kind === "final" &&
+        currentDraftKind === "bullets" &&
+        draftStream &&
+        !reply.hasMedia &&
+        !payload.isError &&
+        trimmedFinalText.length > 0
+      ) {
+        await draftStream.clear();
+        currentDraftKind = null;
+        previewToolProgressLines = [];
+        appendRenderedText = "";
+        appendSourceText = "";
+        // Fall through to deliverNormally below — the draftMessageId /
+        // draftChannelId computed above are stale now that we cleared.
+        await deliverNormally({ payload, kind: info.kind });
         return;
       }
 
@@ -753,6 +788,26 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
   let appendSourceText = "";
   let statusUpdateCount = 0;
 
+  // Telegram-parity tool ephemerality: track what the CURRENT draftStream
+  // message holds so we can rotate or delete it at the right transitions.
+  //
+  //   - "narrative"   — partial-text or block-text content from the agent.
+  //                     Keep this message permanent: rotate (forceNewMessage)
+  //                     to start a fresh draft for the next phase.
+  //   - "bullets"     — `Working…\n• …` tool-progress preview only.
+  //                     Delete this message (chat.delete) at every
+  //                     transition: turning into narrative, finalizing the
+  //                     turn, rotating on assistant boundary, or cleanup.
+  //   - null          — no content has been written to the current draft yet.
+  //
+  // Behaviour:
+  //   narrative  → bullets   : rotate (preserve narrative as a permanent message)
+  //   bullets    → narrative : clear   (delete the bullet-only ephemeral message)
+  //   bullets    → final     : clear + deliverNormally (final answer is its own message)
+  //   narrative  → final     : canFinalizeViaPreviewEdit (replace narrative with answer)
+  //   bullets    → cleanup   : clear   (don't leave a dangling Working… message)
+  let currentDraftKind: "narrative" | "bullets" | null = null;
+
   const pushPreviewToolProgress = (line?: string) => {
     if (!draftStream || !previewToolProgressEnabled || previewToolProgressSuppressed) {
       return;
@@ -778,6 +833,18 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
       return;
     }
 
+    // Transition bullets → narrative: delete the ephemeral bullet-only
+    // draft so it doesn't pollute the channel with a stale Working… preview.
+    // The next chat.postMessage from the same draftStream creates a fresh
+    // permanent message that hosts the agent's narrative text.
+    if (currentDraftKind === "bullets" && draftStream) {
+      void draftStream.clear();
+      previewToolProgressLines = [];
+      appendRenderedText = "";
+      appendSourceText = "";
+      statusUpdateCount = 0;
+    }
+
     previewToolProgressSuppressed = true;
     previewToolProgressLines = [];
 
@@ -794,6 +861,7 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
       }
       draftStream?.update(next.rendered);
       hasStreamedMessage = true;
+      currentDraftKind = "narrative";
       return;
     }
 
@@ -804,28 +872,37 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
       }
       draftStream?.update(buildStatusFinalPreviewText(statusUpdateCount));
       hasStreamedMessage = true;
+      currentDraftKind = "narrative";
       return;
     }
 
     draftStream?.update(trimmed);
     hasStreamedMessage = true;
+    currentDraftKind = "narrative";
   };
   const onDraftBoundary = !shouldUseDraftStream
     ? undefined
     : async () => {
-        // Telegram-parity: do NOT rotate (forceNewMessage) on assistant
-        // message / reasoning-end boundaries. Keep editing the SAME
-        // draftStream message all turn so the user sees one Slack bubble
-        // that grows through `Working…` previews and finalizes as the
-        // answer text — matching Telegram's lane behaviour. Without this,
-        // every assistant-message-start posted a fresh chat.postMessage,
-        // so an N-step turn ended with N separate `Working…` messages
-        // plus the final answer (visible fan-out across boundaries).
+        // Boundary handling preserves agent text segments and discards
+        // ephemeral tool-only previews:
         //
-        // Reset only the per-segment cursors (bullet list, partial-append
-        // cursors, status counter) so the next segment renders fresh
-        // content via the same draft message. `hasStreamedMessage` stays
-        // true since the stream HAS in fact been started.
+        //   currentDraftKind === "narrative" : the draft holds an agent
+        //     text segment (partial streaming or block reply text). Rotate
+        //     so that segment becomes a permanent Slack message and the
+        //     next segment starts in a fresh draft.
+        //
+        //   currentDraftKind === "bullets"   : the draft is a Working…
+        //     preview only. Delete it (chat.delete) — it was scaffolding
+        //     for a tool burst that has now ended; there is nothing
+        //     persistent to preserve.
+        //
+        //   currentDraftKind === null        : nothing to do.
+        if (currentDraftKind === "narrative") {
+          draftStream?.forceNewMessage();
+        } else if (currentDraftKind === "bullets") {
+          await draftStream?.clear();
+        }
+        currentDraftKind = null;
         appendRenderedText = "";
         appendSourceText = "";
         statusUpdateCount = 0;
@@ -914,6 +991,14 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
   } catch (err) {
     dispatchError = err;
   } finally {
+    // If the dispatch ended with a bullet-only Working… preview still
+    // open (e.g. error path, or final answer arrived but had media that
+    // forced deliverNormally elsewhere), delete it so the channel doesn't
+    // keep a dangling scaffolding message.
+    if (currentDraftKind === "bullets" && draftStream) {
+      await draftStream.clear();
+      currentDraftKind = null;
+    }
     await draftStream?.flush();
     draftStream?.stop();
     markDispatchIdle();
