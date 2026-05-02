@@ -618,8 +618,14 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
         // The agent's own narrative prose (visible in the streaming text)
         // carries the signal for that turn — same as Telegram lanes.
         if (previewToolProgressSuppressed) {
+          logVerbose(
+            `slack: skipping ${info.kind} bullet consolidation (partial streaming active)`,
+          );
           return;
         }
+        logVerbose(
+          `slack: consolidating ${info.kind} payload (${trimmedFinalText.length} chars) into draft preview bullet`,
+        );
         const finalThreadTs = usedReplyThreadTs ?? statusThreadTs;
         if (deliveryTracker.hasDelivered({ kind: info.kind, payload, threadTs: finalThreadTs })) {
           observedReplyDelivery = true;
