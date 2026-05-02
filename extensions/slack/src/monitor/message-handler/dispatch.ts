@@ -98,13 +98,14 @@ export function shouldEnableSlackPreviewStreaming(params: {
   isDirectMessage: boolean;
   threadTs?: string;
 }): boolean {
-  if (params.mode === "off") {
-    return false;
-  }
-  if (!params.isDirectMessage) {
-    return true;
-  }
-  return Boolean(params.threadTs);
+  // Always enable preview streaming when the configured mode is anything
+  // other than "off". The earlier carve-out for "DM without thread"
+  // prevented Telegram-parity bullet consolidation in the most common
+  // Slack scenario (DMs with the bot where replies don't auto-thread),
+  // letting every mid-turn tool/block payload fan out as a separate
+  // chat.postMessage. Posting a single "Working…" message and editing it
+  // via chat.update is the correct UX for that case too.
+  return params.mode !== "off";
 }
 
 export function shouldInitializeSlackDraftStream(params: {
@@ -602,9 +603,15 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
       // Explicit kind allow-list ("tool" | "block") instead of `!== "final"`
       // so future ReplyDispatchKind additions don't accidentally route
       // through here without a deliberate review.
+      // Note: previewToolProgressEnabled is intentionally NOT in this
+      // condition. That config flag was originally meant to gate the
+      // `Working… • tool: x` preview emitted by core's onToolStart-style
+      // callbacks. Tying mid-turn fan-out prevention to it meant any
+      // workspace with toolProgress=false kept getting fan-out — defeating
+      // the purpose. As long as a draftStream exists we always want
+      // mid-turn payloads to fold into it.
       const canConsolidateAsBullet =
         Boolean(draftStream) &&
-        previewToolProgressEnabled &&
         (info.kind === "tool" || info.kind === "block") &&
         !reply.hasMedia &&
         !payload.isError &&
@@ -613,25 +620,40 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
       if (canConsolidateAsBullet) {
         // While partial token streaming is rendering agent text into the
         // draft preview, do not overwrite it with a tool/block bullet.
-        // pushPreviewToolProgress already no-ops in this state; we mirror
-        // that here so we don't falsely mark the payload as delivered.
-        // The agent's own narrative prose (visible in the streaming text)
-        // carries the signal for that turn — same as Telegram lanes.
+        // The agent's own narrative prose carries the signal for that
+        // turn — same as Telegram lanes.
         if (previewToolProgressSuppressed) {
           logVerbose(
             `slack: skipping ${info.kind} bullet consolidation (partial streaming active)`,
           );
           return;
         }
-        logVerbose(
-          `slack: consolidating ${info.kind} payload (${trimmedFinalText.length} chars) into draft preview bullet`,
-        );
         const finalThreadTs = usedReplyThreadTs ?? statusThreadTs;
         if (deliveryTracker.hasDelivered({ kind: info.kind, payload, threadTs: finalThreadTs })) {
           observedReplyDelivery = true;
           return;
         }
-        pushPreviewToolProgress(trimmedFinalText);
+        // Inline bullet append + draftStream.update so this works
+        // regardless of the previewToolProgressEnabled flag (which still
+        // gates the existing pushPreviewToolProgress callback). Same
+        // rendering format: "Working…\n• …\n• …" capped to last 8 lines,
+        // dedup-suppressed when the latest line matches the previous one.
+        const normalized = trimmedFinalText.replace(/\s+/g, " ").trim();
+        if (normalized) {
+          const previous = previewToolProgressLines.at(-1);
+          if (previous !== normalized) {
+            previewToolProgressLines = [...previewToolProgressLines, normalized].slice(-8);
+            const renderedText = [
+              "Working…",
+              ...previewToolProgressLines.map((entry) => `• ${entry}`),
+            ].join("\n");
+            logVerbose(
+              `slack: consolidating ${info.kind} payload (${trimmedFinalText.length} chars) into draft preview bullet`,
+            );
+            draftStream?.update(renderedText);
+            hasStreamedMessage = true;
+          }
+        }
         observedReplyDelivery = true;
         deliveryTracker.markDelivered({ kind: info.kind, payload, threadTs: finalThreadTs });
         return;
@@ -788,13 +810,22 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
   const onDraftBoundary = !shouldUseDraftStream
     ? undefined
     : async () => {
-        if (hasStreamedMessage) {
-          draftStream?.forceNewMessage();
-          hasStreamedMessage = false;
-          appendRenderedText = "";
-          appendSourceText = "";
-          statusUpdateCount = 0;
-        }
+        // Telegram-parity: do NOT rotate (forceNewMessage) on assistant
+        // message / reasoning-end boundaries. Keep editing the SAME
+        // draftStream message all turn so the user sees one Slack message
+        // that grows through `Working…` previews and finalizes as the
+        // answer text — matching Telegram's lane behaviour. Without this
+        // change the dispatch posted a fresh chat.postMessage at every
+        // boundary, so a 5-step turn ended with 5 separate `Working…`
+        // messages plus the final answer (visible fan-out).
+        //
+        // Reset only the per-segment state (bullet list, partial-append
+        // cursors, status counter) so the next segment renders fresh
+        // content via the same draft message. `hasStreamedMessage` stays
+        // true since the stream has, in fact, been started.
+        appendRenderedText = "";
+        appendSourceText = "";
+        statusUpdateCount = 0;
         previewToolProgressSuppressed = false;
         previewToolProgressLines = [];
       };
