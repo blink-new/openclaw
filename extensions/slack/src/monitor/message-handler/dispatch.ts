@@ -813,13 +813,22 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
   const onDraftBoundary = !shouldUseDraftStream
     ? undefined
     : async () => {
-        if (hasStreamedMessage) {
-          draftStream?.forceNewMessage();
-          hasStreamedMessage = false;
-          appendRenderedText = "";
-          appendSourceText = "";
-          statusUpdateCount = 0;
-        }
+        // Telegram-parity: do NOT rotate (forceNewMessage) on assistant
+        // message / reasoning-end boundaries. Keep editing the SAME
+        // draftStream message all turn so the user sees one Slack bubble
+        // that grows through `Working…` previews and finalizes as the
+        // answer text — matching Telegram's lane behaviour. Without this,
+        // every assistant-message-start posted a fresh chat.postMessage,
+        // so an N-step turn ended with N separate `Working…` messages
+        // plus the final answer (visible fan-out across boundaries).
+        //
+        // Reset only the per-segment cursors (bullet list, partial-append
+        // cursors, status counter) so the next segment renders fresh
+        // content via the same draft message. `hasStreamedMessage` stays
+        // true since the stream HAS in fact been started.
+        appendRenderedText = "";
+        appendSourceText = "";
+        statusUpdateCount = 0;
         previewToolProgressSuppressed = false;
         previewToolProgressLines = [];
       };
