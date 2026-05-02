@@ -95,5 +95,14 @@ export function resolveSlackNativeStreaming(
   if (typeof params.streaming === "boolean") {
     return params.streaming;
   }
-  return true;
+  // Default off. Slack's chat.startStream / chat.appendStream / chat.stopStream
+  // require the bot to be registered as an "Agents & AI App" in Slack
+  // (assistant:write scope). For regular bots this scope is absent, so the
+  // call fails at runtime, flips streamFailed=true, and tool/block deliveries
+  // fan out as one chat.postMessage per event. Defaulting to false routes
+  // streaming through the chat.update-based draft preview path, which
+  // consolidates tool progress into a single edited message — matching
+  // Telegram's UX. Apps that ARE registered as Agents & AI Apps can opt in
+  // explicitly via `streaming.nativeTransport: true` in their channel config.
+  return false;
 }
