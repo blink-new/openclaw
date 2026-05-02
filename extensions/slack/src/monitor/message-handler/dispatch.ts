@@ -585,25 +585,41 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
       const trimmedFinalText = reply.trimmedText;
 
       // Telegram-parity bullet consolidation:
-      // Mid-turn text-only payloads (kind != "final") get folded into the
-      // existing draftStream "Working…" preview as bullet lines via
-      // chat.update — same single Slack message, no fan-out. Only the
+      // Mid-turn text-only payloads (kind === "tool" | "block") get folded
+      // into the existing draftStream "Working…" preview as bullet lines
+      // via chat.update — same single Slack message, no fan-out. Only the
       // final reply finalizes the draft (replaces the preview with the
       // answer text).
       //
-      // Skips: media (needs upload), errors (need their own message),
-      // Slack Block-Kit-laden payloads (need rich rendering), empty text.
-      // Those continue to use the canFinalizeViaPreviewEdit / deliverNormally
-      // path below.
+      // Skips:
+      //   - media payloads (need upload)
+      //   - errors (need their own message)
+      //   - Slack Block-Kit-laden payloads (need rich rendering)
+      //   - empty text
+      // Those continue to use the canFinalizeViaPreviewEdit /
+      // deliverNormally path below.
+      //
+      // Explicit kind allow-list ("tool" | "block") instead of `!== "final"`
+      // so future ReplyDispatchKind additions don't accidentally route
+      // through here without a deliberate review.
       const canConsolidateAsBullet =
         Boolean(draftStream) &&
         previewToolProgressEnabled &&
-        info.kind !== "final" &&
+        (info.kind === "tool" || info.kind === "block") &&
         !reply.hasMedia &&
         !payload.isError &&
         !slackBlocks?.length &&
         trimmedFinalText.length > 0;
       if (canConsolidateAsBullet) {
+        // While partial token streaming is rendering agent text into the
+        // draft preview, do not overwrite it with a tool/block bullet.
+        // pushPreviewToolProgress already no-ops in this state; we mirror
+        // that here so we don't falsely mark the payload as delivered.
+        // The agent's own narrative prose (visible in the streaming text)
+        // carries the signal for that turn — same as Telegram lanes.
+        if (previewToolProgressSuppressed) {
+          return;
+        }
         const finalThreadTs = usedReplyThreadTs ?? statusThreadTs;
         if (deliveryTracker.hasDelivered({ kind: info.kind, payload, threadTs: finalThreadTs })) {
           observedReplyDelivery = true;
