@@ -21,10 +21,14 @@ describe("resolveSlackStreamMode", () => {
 });
 
 describe("resolveSlackStreamingConfig", () => {
-  it("defaults to partial mode with native streaming enabled", () => {
+  it("defaults to partial mode with native streaming disabled (chat.update preview path)", () => {
+    // Slack's chat.startStream API requires the bot to be registered as an
+    // Agents & AI App; for regular bots it fails at runtime. Default native
+    // streaming off so streaming flows through the chat.update-based draft
+    // preview, which consolidates tool progress into a single edited message.
     expect(resolveSlackStreamingConfig({})).toEqual({
       mode: "partial",
-      nativeStreaming: true,
+      nativeStreaming: false,
       draftMode: "replace",
     });
   });
@@ -41,6 +45,8 @@ describe("resolveSlackStreamingConfig", () => {
   });
 
   it("maps legacy streaming booleans to unified mode and native streaming toggle", () => {
+    // Boolean `streaming` still controls native streaming directly: `true`
+    // forces it on (opt-in), `false` forces it off.
     expect(resolveSlackStreamingConfig({ streaming: false })).toEqual({
       mode: "off",
       nativeStreaming: false,
@@ -53,16 +59,30 @@ describe("resolveSlackStreamingConfig", () => {
     });
   });
 
-  it("accepts unified enum values directly", () => {
+  it("accepts unified enum values directly with native streaming defaulted off", () => {
+    // String `streaming` enum values do not imply native streaming — only
+    // `nativeTransport: true` (or boolean `streaming: true`) opts in.
     expect(resolveSlackStreamingConfig({ streaming: "off" })).toEqual({
       mode: "off",
-      nativeStreaming: true,
+      nativeStreaming: false,
       draftMode: "replace",
     });
     expect(resolveSlackStreamingConfig({ streaming: "progress" })).toEqual({
       mode: "progress",
-      nativeStreaming: true,
+      nativeStreaming: false,
       draftMode: "status_final",
+    });
+  });
+
+  it("opts into native streaming when nativeTransport is set explicitly", () => {
+    expect(
+      resolveSlackStreamingConfig({
+        streaming: { mode: "partial", nativeTransport: true },
+      }),
+    ).toEqual({
+      mode: "partial",
+      nativeStreaming: true,
+      draftMode: "replace",
     });
   });
 });
