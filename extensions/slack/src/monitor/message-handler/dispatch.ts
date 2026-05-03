@@ -827,18 +827,22 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
     hasStreamedMessage = true;
   };
 
-  const updateDraftFromPartial = (text?: string) => {
+  const updateDraftFromPartial = async (text?: string) => {
     const trimmed = text?.trimEnd();
     if (!trimmed) {
       return;
     }
 
     // Transition bullets → narrative: delete the ephemeral bullet-only
-    // draft so it doesn't pollute the channel with a stale Working… preview.
-    // The next chat.postMessage from the same draftStream creates a fresh
-    // permanent message that hosts the agent's narrative text.
+    // draft so it doesn't pollute the channel with a stale Working…
+    // preview. We MUST await the clear before queueing the next update.
+    // Without await the loop's throttle may flush a chat.update against
+    // the still-cached bullet messageId BEFORE clear has reset
+    // streamChannelId/streamMessageId, leaving the old bullet message
+    // visible (and potentially mutated to narrative text and then
+    // deleted, losing the narrative entirely).
     if (currentDraftKind === "bullets" && draftStream) {
-      void draftStream.clear();
+      await draftStream.clear();
       previewToolProgressLines = [];
       appendRenderedText = "";
       appendSourceText = "";
@@ -934,7 +938,7 @@ export async function dispatchPreparedSlackMessage(prepared: PreparedSlackMessag
           : !previewStreamingEnabled
             ? undefined
             : async (payload) => {
-                updateDraftFromPartial(payload.text);
+                await updateDraftFromPartial(payload.text);
               },
         onAssistantMessageStart: onDraftBoundary,
         onReasoningEnd: onDraftBoundary,
