@@ -74,6 +74,20 @@ blink connector exec composio_googleads v23/customers/$CUSTOMER_ID/googleAds:sea
 > **`cost_micros`** is in millionths of the account currency. Divide by
 > `1_000_000` to get the actual amount. e.g. `12_500_000` cost_micros = $12.50.
 
+> **Conversion value: prefer `metrics.conversions_value` over `metrics.all_conversions_value`.**
+>
+> - `conversions_value` — **primary** conversion actions only (the ones
+>   marked "Include in 'Conversions'"). Matches the Google Ads UI's "Conv.
+>   value" column and what Smart Bidding optimizes against. Use this for
+>   ROAS and revenue reporting.
+> - `all_conversions_value` — includes **secondary** actions too
+>   (view-through, cross-device, store visits). These often double-count the
+>   same user action already in `conversions_value`, inflating revenue.
+>
+> Same rule for the count columns: `metrics.conversions` (primary) vs
+> `metrics.all_conversions` (everything). Only use the `all_*` variants if
+> the user explicitly asks for secondary conversions.
+
 ---
 
 ## Create a campaign budget
