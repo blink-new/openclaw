@@ -81,8 +81,18 @@ POST_URN=$(blink linkedin post "Hello LinkedIn" --json | python3 -c "import json
 The user must have connected LinkedIn with "Company Page access" enabled (opt-in at connect time). To check if org scopes are granted:
 
 ```bash
-blink connector status linkedin --json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['data']['metadata']['scope'])"
-# should contain: w_organization_social
+blink connector status linkedin --json | python3 -c "
+import json,sys
+d = json.load(sys.stdin)
+scope = d.get('data', {}).get('metadata', {}).get('scope', '')
+has_w = 'w_organization_social' in scope
+has_rw = 'rw_organization_admin' in scope
+if has_w and has_rw:
+    print('✓ Org scopes granted (w_organization_social + rw_organization_admin)')
+else:
+    missing = [s for s, ok in [('w_organization_social', has_w), ('rw_organization_admin', has_rw)] if not ok]
+    print('✗ Missing scopes: ' + ', '.join(missing) + ' — reconnect with Company Page access')
+"
 ```
 
 If org scopes are missing, the user needs to reconnect LinkedIn with the Company Page access checkbox checked at blink.new/settings?tab=connectors (or in the agent's Integrations tab).
@@ -95,6 +105,10 @@ blink linkedin org-list
 # JSON output for scripting:
 ORG_ID=$(blink linkedin org-list --json | python3 -c "import json,sys; orgs=json.load(sys.stdin); print(orgs[0]['orgId'] if orgs else '')")
 ```
+
+> **Role note:** `org-list` returns pages where the connected member is an `ADMINISTRATOR`. Members with `CONTENT_ADMIN` or `DIRECT_SPONSORED_CONTENT_POSTER` roles can post to Company Pages but will not appear in this list — if you know the numeric org ID already, pass it directly to `org-post`.
+>
+> **Pagination note:** `org-list` returns the first page of results (up to 10). If you admin many Company Pages, use `blink linkedin org-list --json` and scroll to find the right one.
 
 ### Post to a Company Page
 
@@ -256,15 +270,20 @@ blink linkedin comment "$POST_URN" "Really insightful take on this!"
 
 ## Scope check
 
-Before using org commands, verify the connection has org scopes:
+Before using org commands, verify the connection has both org scopes:
 
 ```bash
 blink connector status linkedin --json | python3 -c "
 import json,sys
 d = json.load(sys.stdin)
 scope = d.get('data', {}).get('metadata', {}).get('scope', '')
-has_org = 'w_organization_social' in scope
-print('✓ Org scopes granted' if has_org else '✗ No org scopes — reconnect with Company Page access')
+has_w = 'w_organization_social' in scope
+has_rw = 'rw_organization_admin' in scope
+if has_w and has_rw:
+    print('✓ Org scopes granted (w_organization_social + rw_organization_admin)')
+else:
+    missing = [s for s, ok in [('w_organization_social', has_w), ('rw_organization_admin', has_rw)] if not ok]
+    print('✗ Missing scopes: ' + ', '.join(missing) + ' — reconnect with Company Page access')
 "
 ```
 
