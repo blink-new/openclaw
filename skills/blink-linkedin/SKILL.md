@@ -93,7 +93,7 @@ ORG_ID=$(blink linkedin org-list --json | python3 -c "import json,sys; orgs=json
 
 > **Role note:** `org-list` returns pages where the connected member is an `ADMINISTRATOR` (requires `rw_organization_admin`). Members with `CONTENT_ADMIN` or `DIRECT_SPONSORED_CONTENT_POSTER` roles can post but won't appear here — if you know the numeric org ID already, pass it directly to `org-post` (only `w_organization_social` is needed).
 >
-> **Pagination note:** `org-list` returns the first page of results only. If you admin many Company Pages, use `--json` to inspect the full list.
+> **Pagination note:** `org-list` returns the first page of results only (up to 10 entries). Pagination beyond the first page is not supported via this command — if you admin many Company Pages, note the numeric org IDs from the `--json` output and pass the correct one to `org-post`.
 
 ### Post to a Company Page
 
@@ -119,7 +119,9 @@ else:
 ")
 
 if [ -z "$ORG_ID" ]; then
-  echo "No Company Pages found. Reconnect LinkedIn with Company Page access."
+  echo "No Company Pages found via org-list (ADMINISTRATOR role required)."
+  echo "If you have CONTENT_ADMIN or DIRECT_SPONSORED_CONTENT_POSTER role,"
+  echo "provide the org ID directly: blink linkedin org-post <orgId> \"...\""
   exit 1
 fi
 
@@ -269,13 +271,14 @@ Before using org commands, verify the connection has the right scopes:
 blink connector status linkedin --json | python3 -c "
 import json,sys
 d = json.load(sys.stdin)
-scope = d.get('data', {}).get('metadata', {}).get('scope', '')
+scope = set(d.get('data', {}).get('metadata', {}).get('scope', '').split())
 has_w = 'w_organization_social' in scope
 has_rw = 'rw_organization_admin' in scope
 # org-post needs w_organization_social only
 # org-list additionally needs rw_organization_admin
 print('org-post:', '✓' if has_w else '✗ missing w_organization_social')
-print('org-list:', '✓' if (has_w and has_rw) else '✗ missing ' + ('' if has_w else 'w_organization_social ') + ('' if has_rw else 'rw_organization_admin'))
+missing = [s for s, ok in [('w_organization_social', has_w), ('rw_organization_admin', has_rw)] if not ok]
+print('org-list:', '✓' if not missing else '✗ missing ' + ', '.join(missing))
 if not has_w:
     print('→ Reconnect LinkedIn with Company Page access enabled')
 "
