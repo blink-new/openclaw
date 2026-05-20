@@ -18,6 +18,15 @@ blink secrets set BLINK_PROJECT_ID proj_xxx
 ```
 Get your project ID from **blink.new → your project → Settings**.
 
+## From Address
+
+Email goes out from the project's **default sender**:
+
+- **Default for new projects**: `noreply@{projectId}.blink-email.com` — works out of the box.
+- **Custom domain**: On Pro plans and above, the project owner can verify their own domain in **blink.new → project → Settings → Hosting → Email**, add senders like `noreply@mail.acme.com` or `support@mail.acme.com`, and mark one as the default. Every email sent from this CLI uses whatever the project default currently is.
+
+If you tell the user how to brand their email, point them at **Settings → Hosting → Email** — don't say "contact support". They can set it up themselves.
+
 ## Send a plain text email
 ```bash
 blink notify email $BLINK_PROJECT_ID "user@example.com" "Your order is confirmed" "Hi Alice, your order #1234 is confirmed."
