@@ -131,11 +131,20 @@ blink connector exec composio_googleads v23/customers/$CUSTOMER_ID/campaigns:mut
       "status": "PAUSED",
       "advertisingChannelType": "SEARCH",
       "campaignBudget": "customers/'$CUSTOMER_ID'/campaignBudgets/BUDGET_ID",
-      "manualCpc": {}
+      "manualCpc": {},
+      "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING"
     }
   }]
 }'
 ```
+
+> `containsEuPoliticalAdvertising` is **required** in v23 — omit it and Google
+> returns `contains_eu_political_advertising: REQUIRED`. `manualCpc: {}` is
+> correct as written: empty proto markers survive the proxy (Composio's old
+> falsy-stripping bug, ComposioHQ/composio#3324, was fixed 2026-07-24 and
+> re-verified 2026-07-29). Dry-run any `:mutate` with
+> `"validateOnly": true, "partialFailure": true` first — Google then returns 200
+> with the full `fieldPathElements` list instead of one error at a time.
 
 ---
 
@@ -173,6 +182,8 @@ blink connector exec composio_googleads v23/customers/$CUSTOMER_ID/campaigns:mut
 | `400 Invalid JSON payload "Unknown name 'foo'"` | Field name shape mismatch. Google's REST mapping is **camelCase** for top-level operation fields (`explicitShare`, `resourceName`, `updateMask`) but **snake_case** inside `query` strings. |
 | `400 INVALID_VALUE for field 'campaignBudget'` | Budget resource name is wrong — must be the full string `customers/{id}/campaignBudgets/{id}`, not just the numeric id. |
 | `404` on `googleAds:search` | The customer id you're targeting is a *manager* account (MCC), not an operating account. Use `listAccessibleCustomers` then filter to non-manager ones. |
+| `404` with Google's generic HTML error page | You dropped the version prefix or put the customer id in the body — e.g. `search`, `googleads/search`, `searchStream`. There is no top-level `/search` resource. Use `v23/customers/{customerId}/googleAds:search` (POST). Blink now rewrites these known shapes and rejects other unversioned paths with a 400 naming the template, so you should see this only against a raw Google endpoint. |
+| `429 RESOURCE_EXHAUSTED`, `rateScope: DEVELOPER` | A cap on Composio's **shared** developer token, not on the user's Google Ads account. Nothing the user changes to their account clears it. Honour `retryDelay` (often 10h+) and tell them — do not retry in a loop. `rateScope: ACCOUNT` is the opposite: that one *is* their account's own rate limit. |
 
 ---
 
