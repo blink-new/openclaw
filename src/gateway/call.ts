@@ -609,19 +609,27 @@ export async function callGatewayLeastPrivilege<T = Record<string, unknown>>(
 export async function callGateway<T = Record<string, unknown>>(
   opts: CallGatewayOptions,
 ): Promise<T> {
-  if (Array.isArray(opts.scopes)) {
-    return await callGatewayWithScopes(opts, opts.scopes);
-  }
+  // Resolve the caller identity BEFORE dispatching. The gateway grants the
+  // device-less shared-token self-pairing exemption only to the backend client
+  // (gateway-client/backend); without it, a connection with no device identity
+  // has its requested scopes stripped to zero. Callers that pin explicit scopes
+  // (agent loopback admin calls: sessions.patch / sessions.delete) must reach
+  // callGatewayWithScopes carrying the same defaults as the unscoped path, or
+  // they lose admin and fail with "missing scope: operator.admin".
   const callerMode = opts.mode ?? GATEWAY_CLIENT_MODES.BACKEND;
   const callerName = opts.clientName ?? GATEWAY_CLIENT_NAMES.GATEWAY_CLIENT;
-  if (callerMode === GATEWAY_CLIENT_MODES.CLI || callerName === GATEWAY_CLIENT_NAMES.CLI) {
-    return await callGatewayCli(opts);
-  }
-  return await callGatewayLeastPrivilege({
+  const identifiedOpts = {
     ...opts,
     mode: callerMode,
     clientName: callerName,
-  });
+  };
+  if (Array.isArray(opts.scopes)) {
+    return await callGatewayWithScopes(identifiedOpts, opts.scopes);
+  }
+  if (callerMode === GATEWAY_CLIENT_MODES.CLI || callerName === GATEWAY_CLIENT_NAMES.CLI) {
+    return await callGatewayCli(identifiedOpts);
+  }
+  return await callGatewayLeastPrivilege(identifiedOpts);
 }
 
 export function randomIdempotencyKey() {

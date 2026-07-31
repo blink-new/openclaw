@@ -27,6 +27,8 @@ let lastClientOptions: {
   token?: string;
   password?: string;
   tlsFingerprint?: string;
+  clientName?: string;
+  mode?: string;
   clientDisplayName?: string;
   scopes?: string[];
   deviceIdentity?: unknown;
@@ -531,6 +533,42 @@ describe("callGateway url resolution", () => {
     });
 
     expect(sawYieldBeforeStart).toBe(true);
+  });
+
+  // Regression: agent loopback admin calls (sessions_spawn -> sessions.patch /
+  // sessions.delete) pin scopes:["operator.admin"] and pass no clientName/mode.
+  // The explicit-scopes branch used to skip caller-identity defaulting, so the
+  // connection was created as CLI instead of gateway-client/backend. The gateway
+  // grants the device-less shared-token self-pairing exemption only to the
+  // backend client, so those calls had their scopes stripped and failed with
+  // "missing scope: operator.admin" — blocking subagent spawns entirely.
+  it("defaults caller identity to gateway-client/backend when explicit scopes are pinned", async () => {
+    setLocalLoopbackGatewayConfig(18789);
+
+    await callGateway({
+      method: "sessions.patch",
+      params: { key: "agent:main:subagent:test" },
+      scopes: ["operator.admin"],
+      deviceIdentity: null,
+    });
+
+    expect(lastClientOptions?.clientName).toBe(GATEWAY_CLIENT_NAMES.GATEWAY_CLIENT);
+    expect(lastClientOptions?.mode).toBe(GATEWAY_CLIENT_MODES.BACKEND);
+    expect(lastClientOptions?.scopes).toEqual(["operator.admin"]);
+  });
+
+  it("still honours an explicit caller identity when scopes are pinned", async () => {
+    setLocalLoopbackGatewayConfig(18789);
+
+    await callGateway({
+      method: "sessions.patch",
+      scopes: ["operator.admin"],
+      mode: GATEWAY_CLIENT_MODES.CLI,
+      clientName: GATEWAY_CLIENT_NAMES.CLI,
+    });
+
+    expect(lastClientOptions?.clientName).toBe(GATEWAY_CLIENT_NAMES.CLI);
+    expect(lastClientOptions?.mode).toBe(GATEWAY_CLIENT_MODES.CLI);
   });
 });
 
