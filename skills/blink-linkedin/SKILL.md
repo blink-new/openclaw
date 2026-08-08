@@ -1,10 +1,10 @@
 ---
 name: blink-linkedin
 description: >
-  Full LinkedIn automation — publish posts, comment, react, browse feed,
-  search profiles, and check messages. Uses Blink OAuth for writes and
-  session cookies for reads. Use when asked to post, comment, like, or
-  read anything on LinkedIn.
+  Full LinkedIn automation — publish posts to personal feed or Company Pages,
+  comment, react, browse feed, search profiles, and check messages. Uses Blink
+  OAuth for writes and session cookies for reads. Use when asked to post,
+  comment, like, read anything on LinkedIn, or manage a LinkedIn Company Page.
 metadata:
   { "blink": { "requires_env": ["BLINK_API_KEY", "BLINK_AGENT_ID"], "connector": "linkedin" } }
 ---
@@ -13,16 +13,17 @@ metadata:
 
 Full LinkedIn automation via two complementary methods:
 
-| Action | Method | Setup |
+| Action | Method | Scope needed |
 |---|---|---|
-| View profile | `blink linkedin me` | OAuth only |
-| Publish post (personal feed) | `blink linkedin post` | OAuth only |
-| **Post to Company Page** | `blink connector exec linkedin rest/posts POST` | OAuth + **"Company Page access"** at connect time |
-| Delete post | `blink linkedin delete` | OAuth only |
-| Like a post | `blink linkedin like` | OAuth only |
-| Unlike a post | `blink linkedin unlike` | OAuth only |
-| Comment on post | `blink linkedin comment` | OAuth only |
-| Upload image/video | `blink linkedin upload-media` | OAuth only |
+| View profile | `blink linkedin me` | w_member_social |
+| Publish personal post | `blink linkedin post` | w_member_social |
+| Delete post | `blink linkedin delete` | w_member_social |
+| Like a post | `blink linkedin like` | w_member_social |
+| Unlike a post | `blink linkedin unlike` | w_member_social |
+| Comment on post | `blink linkedin comment` | w_member_social |
+| Upload image/video | `blink linkedin upload-media` | w_member_social |
+| **List Company Pages** | **`blink linkedin org-list`** | w_organization_social + rw_organization_admin |
+| **Post to Company Page** | **`blink linkedin org-post`** | w_organization_social |
 | Browse feed | `python3 scripts/lk.py feed` | Cookies required |
 | Search people | `python3 scripts/lk.py search` | Cookies required |
 | View a profile | `python3 scripts/lk.py profile` | Cookies required |
@@ -63,7 +64,7 @@ PERSON_ID=$(blink linkedin me --json | python3 -c "import json,sys; print(json.l
 
 ---
 
-## Publish a post
+## Publish a personal post
 
 ```bash
 blink linkedin post "Excited to share our latest update! #Innovation"
@@ -73,89 +74,68 @@ blink linkedin post "Internal update" --visibility CONNECTIONS
 POST_URN=$(blink linkedin post "Hello LinkedIn" --json | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 ```
 
-`blink linkedin post` always authors as the connected member (`urn:li:person:...`). For posting on behalf of a LinkedIn Company Page the member administers, see the next section.
-
 ---
 
-## Post to a Company Page (organization)
+## Company Page posting (org scopes required)
 
 **Precondition:** the user must have ticked **"Company Page access"** when connecting LinkedIn — that grants `w_organization_social` + `rw_organization_admin` on top of the default member scopes. If the user only connected with default scopes, prompt them to reconnect with Company Page access before retrying.
 
-Confirm the token has the right scope:
+`org-post` requires only `w_organization_social`. `org-list` additionally requires `rw_organization_admin` to query the ACL API. See [Scope check](#scope-check).
+
+### List Company Pages you admin
 
 ```bash
-# Print scopes granted on the active LinkedIn connection
-blink connector get linkedin --json | python3 -c "import json,sys; print(json.load(sys.stdin).get('metadata',{}).get('scope',''))"
-# Look for w_organization_social in the output
+blink linkedin org-list
+
+# JSON output for scripting:
+ORG_ID=$(blink linkedin org-list --json | python3 -c "import json,sys; orgs=json.load(sys.stdin); print(orgs[0]['orgId'] if orgs else '')")
 ```
 
-If the scope is missing, stop and tell the user:
-> "I need Company Page access to post on behalf of your org. Reconnect LinkedIn from Integrations settings and tick **Company Page access** before clicking Connect."
+> **Role note:** `org-list` returns pages where the connected member is an `ADMINISTRATOR` (requires `rw_organization_admin`). Members with `CONTENT_ADMIN` or `DIRECT_SPONSORED_CONTENT_POSTER` roles can post but won't appear here — if you know the numeric org ID already, pass it directly to `org-post` (only `w_organization_social` is needed).
+>
+> **Pagination note:** `org-list` returns the first page of results only (up to 10 entries). Pagination beyond the first page is not supported via this command — if you admin many Company Pages, note the numeric org IDs from the `--json` output and pass the correct one to `org-post`.
 
-### List the orgs the member can post to
-
-LinkedIn restricts org posting to pages where the member has page role `ADMINISTRATOR`, `DIRECT_SPONSORED_CONTENT_POSTER`, or `CONTENT_ADMIN`. Discover them via the Organization Access Control endpoint:
+### Post to a Company Page
 
 ```bash
-ACCESS_TOKEN=$(blink connector get linkedin --json | python3 -c "import json,sys; print(json.load(sys.stdin)['tokens']['access_token'])")
+blink linkedin org-post 12345678 "Announcing our new product! #Innovation"
+blink linkedin org-post "$ORG_ID" "Weekly company update" --visibility CONNECTIONS
 
-curl -s 'https://api.linkedin.com/rest/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED' \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "LinkedIn-Version: 202604" \
-  -H "X-Restli-Protocol-Version: 2.0.0" \
-  | python3 -m json.tool
+# Capture URN:
+POST_URN=$(blink linkedin org-post "$ORG_ID" "Hello from Company Page" --json | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 ```
 
-Each element has `organization` (the URN to use as `author`) and the member's `role`. Cache this list for the session — the endpoint is slow.
-
-### Publish to the org
-
-`blink linkedin post` does not yet accept an `--author` flag for org URNs. Until that lands in the SDK CLI, use the raw connector exec:
+### End-to-end Company Page workflow
 
 ```bash
-ORG_URN="urn:li:organization:5515715"   # from organizationAcls above
+# 1. Get the org ID
+ORG_ID=$(blink linkedin org-list --json | python3 -c "
+import json,sys
+orgs = json.load(sys.stdin)
+if not orgs:
+    print('', end='')
+else:
+    print(orgs[0]['orgId'])
+")
 
-blink connector exec linkedin rest/posts POST "{
-  \"author\": \"$ORG_URN\",
-  \"commentary\": \"Excited to announce our latest milestone! 🚀\",
-  \"visibility\": \"PUBLIC\",
-  \"distribution\": {
-    \"feedDistribution\": \"MAIN_FEED\",
-    \"targetEntities\": [],
-    \"thirdPartyDistributionChannels\": []
-  },
-  \"lifecycleState\": \"PUBLISHED\",
-  \"isReshareDisabledByAuthor\": false
-}"
-```
+if [ -z "$ORG_ID" ]; then
+  echo "No Company Pages found via org-list (ADMINISTRATOR role required)."
+  echo "If you have CONTENT_ADMIN or DIRECT_SPONSORED_CONTENT_POSTER role,"
+  echo "provide the org ID directly: blink linkedin org-post <orgId> \"...\""
+  exit 1
+fi
 
-The response includes the created post URN in the `x-restli-id` header — capture it the same way as personal posts.
-
-### Org post with image / video
-
-Upload the media first (it's the same flow as personal posting — assets are workspace-scoped, not author-scoped), then reference the asset URN in the org post:
-
-```bash
-ASSET_URN=$(blink linkedin upload-media https://example.com/announcement.png --json | python3 -c "import json,sys; print(json.load(sys.stdin)['asset_urn'])")
-
-blink connector exec linkedin rest/posts POST "{
-  \"author\": \"$ORG_URN\",
-  \"commentary\": \"Behind the scenes at HQ\",
-  \"visibility\": \"PUBLIC\",
-  \"distribution\": {\"feedDistribution\": \"MAIN_FEED\", \"targetEntities\": [], \"thirdPartyDistributionChannels\": []},
-  \"content\": {\"media\": {\"id\": \"$ASSET_URN\", \"title\": \"Behind the scenes\"}},
-  \"lifecycleState\": \"PUBLISHED\",
-  \"isReshareDisabledByAuthor\": false
-}"
+# 2. Post to Company Page
+blink linkedin org-post "$ORG_ID" "Your post content here"
 ```
 
 ### Common errors when posting as an org
 
 | HTTP | Cause | Fix |
 |---|---|---|
-| 403 `ACCESS_DENIED` | Token lacks `w_organization_social`, OR member doesn't admin that org | Verify scope + verify the org URN came from this member's `organizationAcls` |
-| 422 `INVALID_URN_TYPE` | Author URN is `person:` instead of `organization:` | Use `urn:li:organization:{id}`, not `urn:li:person:{sub}` |
-| 401 `INVALID_ACCESS_TOKEN` | Token expired (LinkedIn tokens last ~60 days) | Reconnect from Integrations settings — refresh tokens for organic LinkedIn are not always issued |
+| 403 `ACCESS_DENIED` | Token lacks `w_organization_social`, or member can't post to that org | Verify scope; if posting as CONTENT_ADMIN/DIRECT_SPONSORED_CONTENT_POSTER, ensure you have the correct org ID |
+| 422 `INVALID_URN_TYPE` | Wrong author URN type | `org-post` sets `urn:li:organization:{id}` automatically |
+| 401 `INVALID_ACCESS_TOKEN` | Token expired (~60 days) | Reconnect from Integrations settings |
 
 ---
 
@@ -197,7 +177,7 @@ ASSET_URN=$(blink linkedin upload-media https://example.com/photo.jpg --json | p
 # Step 2: Get your person ID
 PERSON_ID=$(blink linkedin me --json | python3 -c "import json,sys; print(json.load(sys.stdin)['sub'])")
 
-# Step 3: Post with media
+# Step 3: Post with media (uses ugcPosts legacy endpoint for media)
 blink connector exec linkedin ugcPosts POST "{
   \"author\": \"urn:li:person:$PERSON_ID\",
   \"lifecycleState\": \"PUBLISHED\",
@@ -275,19 +255,43 @@ blink linkedin comment "$POST_URN" "Really insightful take on this!"
 ## Common use cases
 
 - "Post an update about our launch" → `blink linkedin post "..."`
-- "Post on our company page" → check scope → `organizationAcls` → `blink connector exec linkedin rest/posts POST` with `urn:li:organization:...` author
+- "Post to our Company Page" → `blink linkedin org-list` → `blink linkedin org-post <id> "..."`
 - "Like Andrew's post about AI" → `lk.py feed` to find it, then `blink linkedin like`
 - "Comment on the top post in my feed" → `lk.py feed -n 1`, extract URN, `blink linkedin comment`
 - "Search for VPs of Sales at Series B startups" → `lk.py search "VP Sales Series B"`
 - "Post this image" → `blink linkedin upload-media <url>` then post with asset URN
-- "Post this image on our company page" → upload media → org post via `connector exec` with `content.media.id` set to the asset URN
+
+---
+
+## Scope check
+
+Before using org commands, verify the connection has the right scopes:
+
+```bash
+blink connector status linkedin --json | python3 -c "
+import json,sys
+d = json.load(sys.stdin)
+scope = set(d.get('data', {}).get('metadata', {}).get('scope', '').split())
+has_w = 'w_organization_social' in scope
+has_rw = 'rw_organization_admin' in scope
+# org-post needs w_organization_social only
+# org-list additionally needs rw_organization_admin
+print('org-post:', '✓' if has_w else '✗ missing w_organization_social')
+missing = [s for s, ok in [('w_organization_social', has_w), ('rw_organization_admin', has_rw)] if not ok]
+print('org-list:', '✓' if not missing else '✗ missing ' + ', '.join(missing))
+if not has_w:
+    print('→ Reconnect LinkedIn with Company Page access enabled')
+"
+```
 
 ---
 
 ## URN formats
 
-- `urn:li:share:123` — returned when you create a post
+Post URNs (work with `like`, `unlike`, and `comment`):
+- `urn:li:share:123` — returned when you create a post (personal or org)
 - `urn:li:ugcPost:123` — legacy post URN format
-- `urn:li:activity:123` — from LinkedIn feed URLs (works with like/comment)
+- `urn:li:activity:123` — from LinkedIn feed URLs
 
-All three formats work with `like`, `unlike`, and `comment`.
+Author URN (used to identify the posting entity — not a post URN):
+- `urn:li:organization:123` — Company Page author (pass the numeric ID to `org-post`)
